@@ -10,7 +10,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 include(3rdparty/find_dependencies.cmake)
 
 # Libraries
-# add_subdirectory(src/optilib)
+add_subdirectory(src/optilib)
 
 # Targets
 add_subdirectory(src/apps)
