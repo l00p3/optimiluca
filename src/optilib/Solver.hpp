@@ -11,7 +11,6 @@ class Solver {
 public:
   // Constructors
   Solver();
-  void init();
 
   std::tuple<std::vector<Rot2D>, std::vector<float>>
   solve(const std::vector<Rot2D> &state, const std::vector<Rot2D> &measurements,
