@@ -1,5 +1,6 @@
 add_library(optilib)
 target_sources(optilib PRIVATE 
+  State.cpp
   Solver.cpp)
 target_include_directories(optilib PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR})
