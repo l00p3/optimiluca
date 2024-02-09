@@ -12,6 +12,7 @@ public:
 
   // Operators
   State boxPlus(const double &dx) const;
+  friend State operator+(const State &lhs, const State &rhs);
 
   friend std::ostream &operator<<(std::ostream &os, const State &state);
 
