@@ -7,16 +7,17 @@ namespace optilib {
 
 Solver::Solver(){};
 
-std::tuple<std::vector<Rot2D>, std::vector<float>>
+std::tuple<State, std::vector<float>>
 Solver::solve(const State &state, const std::vector<double> &measurements,
               const int n_iters) {
 
   // Initialization
   std::vector<double> chi_stats =
-      std::vector<double>(std::numeric_limits<double>::infinity(), n_iters);
+      std::vector<double>(n_iters, std::numeric_limits<double>::infinity());
 
-  auto J = Eigen::Matrix<double, 1, 4>::Zero();
-  std::cout << J.transpose() * J << std::endl;
+  // Use this as reference for Hessian computation (and error and jacobian)
+  /* auto J = Eigen::Matrix<double, 1, 4>::Zero(); */
+  /* std::cout << J.transpose() * J << std::endl; */
 
   // For each iterations:
   for (int iter = 0; iter < n_iters; ++iter) {
@@ -52,7 +53,7 @@ Solver::solve(const State &state, const std::vector<double> &measurements,
 
   // Done
 
-  return {{}, {}};
+  return {state, {}};
 };
 
 /* std::tuple<double, Eigen::Matrix4d> */

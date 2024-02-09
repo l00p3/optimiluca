@@ -14,7 +14,7 @@ public:
   // Constructors
   Solver();
 
-  std::tuple<std::vector<Rot2D>, std::vector<float>>
+  std::tuple<State, std::vector<float>>
   solve(const State &state, const std::vector<double> &measurements,
         const int n_iters = 10);
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <eigen3/Eigen/Dense>
+#include <ostream>
 
 namespace optilib {
 
@@ -11,6 +12,8 @@ public:
 
   // Operators
   State boxPlus(const double &dx) const;
+
+  friend std::ostream &operator<<(std::ostream &os, const State &state);
 
 private:
   std::vector<Eigen::Rotation2D<double>> _rotations;

@@ -20,7 +20,8 @@ int main() {
   auto measurements = {M_PI / 2, M_PI / 2, M_PI / 2, M_PI / 2};
 
   // Optimize
-  auto [ciccio, ciccione] = solver.solve(state, measurements);
+  auto [new_state, chi_stats] = solver.solve(state, measurements);
 
-  std::cout << "Funziono" << std::endl;
+  std::cout << std::endl << "Optimized state: " << std::endl;
+  std::cout << new_state << std::endl;
 }
