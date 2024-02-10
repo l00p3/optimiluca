@@ -12,6 +12,9 @@ State::State(const double &r1, const double &r2, const double &r3,
   this->_rotations[3] = Eigen::Rotation2Dd(r4);
 }
 
+// ---------- METHODS ----------
+size_t State::size() const { return this->_rotations.size(); }
+
 // ---------- OPERATORS ----------
 State State::boxPlus(const double &dx) const {
   /* return State(Eigen::Rotation2Dd(dx) * this->_rotations[0], */

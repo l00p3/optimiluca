@@ -8,6 +8,7 @@
 namespace optilib {
 
 using Rot2D = Eigen::Rotation2Dd;
+using RowVec4D = Eigen::Matrix<double, 1, 4>;
 
 class Solver {
 public:
@@ -20,9 +21,10 @@ public:
 
 private:
   // Utility functions
-  std::tuple<double, Eigen::Matrix4d>
-  computeErrorAndJacobian(const Rot2D &x_i, const Rot2D &x_j,
-                          const Rot2D &z_i) const;
+  std::tuple<double, RowVec4D> computeErrorAndJacobian(const State &state,
+                                                       const int &observer_id,
+                                                       const int &observed_id,
+                                                       const Rot2D &z_i) const;
 
   // Here you put all the parameters (if any)
 };

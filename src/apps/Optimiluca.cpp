@@ -24,4 +24,6 @@ int main() {
 
   std::cout << std::endl << "Optimized state: " << std::endl;
   std::cout << new_state << std::endl;
+
+  // TODO: plot the chi stats
 }

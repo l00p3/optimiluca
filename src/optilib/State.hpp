@@ -10,10 +10,11 @@ public:
   // Constructors
   State(const double &r1, const double &r2, const double &r3, const double &r4);
 
+  // Methods
+  size_t size() const;
+
   // Operators
   State boxPlus(const double &dx) const;
-  friend State operator+(const State &lhs, const State &rhs);
-
   friend std::ostream &operator<<(std::ostream &os, const State &state);
 
 private:

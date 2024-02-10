@@ -12,6 +12,7 @@ Solver::solve(const State &state, const std::vector<double> &measurements,
               const int n_iters) {
 
   // Initialization
+  const size_t state_size = state.size();
   std::vector<double> chi_stats =
       std::vector<double>(n_iters, std::numeric_limits<double>::infinity());
 
@@ -32,40 +33,56 @@ Solver::solve(const State &state, const std::vector<double> &measurements,
     // For each measurements
     for (size_t meas_idx = 0; meas_idx < measurements.size(); meas_idx++) {
 
+      // Compute the useful state indices
+      const int observer_id = meas_idx;
+      const int observed_id = (meas_idx + 1) % state_size;
+
       // Compute the error and jacobian
-      /* auto [error, J_i] = */
-      /*     computeErrorAndJacobian(state[(meas_idx + 1) % 4], state[meas_idx],
-       */
-      /*                             Rot2D(measurements[meas_idx])); */
+      auto [error, J_i] = computeErrorAndJacobian(
+          state, observer_id, observed_id, Rot2D(measurements[meas_idx]));
 
       // Update the stats
-      /* current_chi += error * error; */
+      current_chi += error * error;
 
       // Update H and b
-      /* H.block<4, 1>(0, (meas_idx + 1) % 4) = J_i; */
+      /* H.block<4, 1>(0, (meas_idx + 1) % 4) = J_i.transpose() * J_i; */
+      // TODO: check H and compute b
     }
 
     // Update the stats
     chi_stats[iter] = current_chi;
 
     // Update the state (boxplus)
+    // We fix the first state to avoid an underconstrained problem
+    // TODO: compute also dx
   }
 
   // Done
-
   return {state, {}};
 };
 
-/* std::tuple<double, Eigen::Matrix4d> */
-/* Solver::computeErrorAndJacobian(const Rot2D &x_i, const Rot2D &x_j, */
-/*                                 const Rot2D &z_i) const { */
+std::tuple<double, RowVec4D>
+Solver::computeErrorAndJacobian(const State &state, const int &observer_id,
+                                const int &observed_id,
+                                const Rot2D &z_i) const {
 
-/*   // Initialization */
-/*   auto J_i = Eigen::Vector4d::Identity(); */
+  // Check index validity
+  assert(observed_id >= 0 && observed_id < state.size() &&
+         "The value of observed_id is invalid");
+  assert(observer_id >= 0 && observer_id < state.size() &&
+         "The value of observer_id is invalid");
 
-/*   // Compute the error */
+  // Initialization
+  RowVec4D J_i = RowVec4D().Zero();
 
-/*   // Compute the Jacobian */
-/* } */
+  // Compute the error
+  double error = 1.0;
+
+  // Compute the Jacobian // TODO: check values
+  J_i(0, observer_id) = -1.0;
+  J_i(0, observed_id) = 1.0;
+
+  return {error, J_i};
+}
 
 } // namespace optilib
