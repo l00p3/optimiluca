@@ -1,4 +1,4 @@
-.PHONY: build run
+.PHONY: build run clean
 
 build:
 	@cmake -Bbuild . 
@@ -6,3 +6,6 @@ build:
 
 run: build
 	./build/src/apps/optimiluca
+
+clean:
+	@rm -rf build
