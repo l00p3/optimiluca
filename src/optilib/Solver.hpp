@@ -7,7 +7,6 @@
 
 namespace optilib {
 
-using Rot2D = Eigen::Rotation2Dd;
 using RowVec4D = Eigen::Matrix<double, 1, 4>;
 
 class Solver {
@@ -15,7 +14,7 @@ public:
   // Constructors
   Solver();
 
-  std::tuple<State, std::vector<float>>
+  std::tuple<State, std::vector<double>>
   solve(const State &state, const std::vector<double> &measurements,
         const int n_iters = 10);
 

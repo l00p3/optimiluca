@@ -4,7 +4,7 @@ namespace optilib {
 
 State::State(const double &r1, const double &r2, const double &r3,
              const double &r4)
-    : _rotations(4, Eigen::Rotation2D<double>::Identity()) {
+    : _rotations(4, Rot2D::Identity()) {
   // Initialize the elements of the state
   this->_rotations[0] = Eigen::Rotation2Dd(r1);
   this->_rotations[1] = Eigen::Rotation2Dd(r2);
@@ -14,6 +14,12 @@ State::State(const double &r1, const double &r2, const double &r3,
 
 // ---------- METHODS ----------
 size_t State::size() const { return this->_rotations.size(); }
+
+Rot2D State::get_rotation(const int &idx) const {
+  assert(idx >= 0 && idx < this->size() &&
+         "Invalid index of rotation in State");
+  return this->_rotations[idx];
+}
 
 // ---------- OPERATORS ----------
 State State::boxPlus(const double &dx) const {
