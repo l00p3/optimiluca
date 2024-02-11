@@ -1,7 +1,6 @@
 #pragma once
 
 #include <eigen3/Eigen/Dense>
-#include <eigen3/Eigen/src/Geometry/Rotation2D.h>
 #include <ostream>
 
 namespace optilib {
@@ -18,11 +17,11 @@ public:
   Rot2D get_rotation(const int &idx) const;
 
   // Operators
-  State boxPlus(const double &dx) const;
+  void boxPlus(const Eigen::Vector3d &dx);
   friend std::ostream &operator<<(std::ostream &os, const State &state);
 
 private:
-  std::vector<Eigen::Rotation2D<double>> _rotations;
+  std::vector<Rot2D> _rotations;
 };
 
 } // namespace optilib

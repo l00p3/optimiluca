@@ -14,9 +14,9 @@ public:
   // Constructors
   Solver();
 
-  std::tuple<State, std::vector<double>>
-  solve(const State &state, const std::vector<double> &measurements,
-        const int n_iters = 10);
+  std::vector<double> solve(State &state,
+                            const std::vector<double> &measurements,
+                            const int n_iters = 10, const bool verbose = false);
 
 private:
   // Utility functions

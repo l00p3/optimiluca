@@ -8,14 +8,20 @@ namespace optilib {
 
 Solver::Solver(){};
 
-std::tuple<State, std::vector<double>>
-Solver::solve(const State &state, const std::vector<double> &measurements,
-              const int n_iters) {
+std::vector<double> Solver::solve(State &state,
+                                  const std::vector<double> &measurements,
+                                  const int n_iters, const bool verbose) {
 
   // Initialization
   const size_t state_size = state.size();
   std::vector<double> chi_stats =
       std::vector<double>(n_iters, std::numeric_limits<double>::infinity());
+
+  // Start printing
+  if (verbose) {
+    std::cout << "\n\t OPTIMIZATION STARTED ( initial guess: " << state
+              << "):" << std::endl;
+  }
 
   // For each iterations:
   for (int iter = 0; iter < n_iters; ++iter) {
@@ -46,6 +52,12 @@ Solver::solve(const State &state, const std::vector<double> &measurements,
       H += J_i.transpose() * J_i;
     }
 
+    // Print stats
+    if (verbose) {
+      std::cout << "\t ITER: " << iter << ", CHI: " << current_chi
+                << ", state: " << state << std::endl;
+    }
+
     // Update the stats
     chi_stats[iter] = current_chi;
 
@@ -54,12 +66,11 @@ Solver::solve(const State &state, const std::vector<double> &measurements,
     Eigen::Vector3d dx = H.block<3, 3>(1, 1).ldlt().solve(b.tail(3));
 
     // Update the state
-    // TODO
-    /* state.boxPlus(0.0); */
+    state.boxPlus(dx);
   }
 
   // Done
-  return {state, chi_stats};
+  return chi_stats;
 };
 
 std::tuple<double, RowVec4D>
