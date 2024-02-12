@@ -95,8 +95,8 @@ Solver::computeErrorAndJacobian(const State &state, const int &observer_id,
 
   // Compute the Jacobian
   RowVec4D J_i = RowVec4D().Zero();
-  J_i(0, observer_id) = -1.0;
-  J_i(0, observed_id) = 1.0;
+  J_i(0, observer_id) = 1.0;
+  J_i(0, observed_id) = -1.0;
 
   return {error, J_i};
 }
