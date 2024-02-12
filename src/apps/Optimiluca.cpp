@@ -12,11 +12,11 @@ using namespace optilib;
 int main() {
   // Initialization
   auto solver = Solver();
-  std::vector<double> ground_truth = {0.0, M_PI / 2, M_PI, 3 * (M_PI / 2)};
+  std::vector<double> ground_truth = {0.0, M_PI / 2, M_PI, M_PI + (M_PI / 2)};
 
   // Define the initial guess
   /* auto state = State(0.0, M_PI / 3, M_PI / 1.2, M_PI); */
-  auto state = State(0.0, M_PI / 2, M_PI, 3 * (M_PI / 2));
+  auto state = State(ground_truth);
 
   // Define the measurements
   std::vector<double> measurements = {M_PI / 2, M_PI / 2, M_PI / 2, M_PI / 2};

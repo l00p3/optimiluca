@@ -4,14 +4,14 @@
 
 namespace optilib {
 
-State::State(const double &r1, const double &r2, const double &r3,
-             const double &r4)
+State::State(const std::vector<double> &angles)
     : _rotations(4, Rot2D::Identity()) {
   // Initialize the elements of the state
-  this->_rotations[0] = Rot2D(r1);
-  this->_rotations[1] = Rot2D(r2);
-  this->_rotations[2] = Rot2D(r3);
-  this->_rotations[3] = Rot2D(r4);
+  assert(angles.size() == 4 &&
+         "We are dealing exactly with 4 angles in the state.");
+  for (int angle_idx = 0; angle_idx < angles.size(); angle_idx++) {
+    this->_rotations[angle_idx] = Rot2D(angles[angle_idx]);
+  }
 }
 
 // ---------- METHODS ----------
