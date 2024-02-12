@@ -1,3 +1,4 @@
+#include <cmath>
 #include <iostream>
 
 #include "State.hpp"
@@ -27,15 +28,17 @@ Rot2D State::get_rotation(const int &idx) const {
 void State::boxPlus(const Eigen::Vector3d &dx) {
   int current_state_idx = 1;
   for (const auto &dx_i : dx) {
-    this->_rotations[current_state_idx++] =
+    this->_rotations[current_state_idx] =
         Rot2D(Rot2D(dx_i).toRotationMatrix().transpose() *
-              this->_rotations[current_state_idx++].toRotationMatrix());
+              this->_rotations[current_state_idx].toRotationMatrix());
+    current_state_idx++;
   }
 }
 
 std::ostream &operator<<(std::ostream &os, const State &state) {
   for (const auto &rot : state._rotations) {
-    os << rot.angle() << " ";
+    const double angle_degrees = rot.angle() * (180 / M_PI);
+    os << angle_degrees << " ";
   }
   return os;
 }

@@ -52,8 +52,6 @@ std::vector<double> Solver::solve(State &state,
       H += J_i.transpose() * J_i;
     }
 
-    exit(0);
-
     // Print stats
     if (verbose) {
       std::cout << "\t ITER: " << iter + 1 << ", CHI: " << current_chi
