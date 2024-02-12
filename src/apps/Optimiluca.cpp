@@ -18,7 +18,6 @@ int main() {
   auto state = State({0.0, M_PI / 2 + 1.4, M_PI - 1.2, M_PI + 1.3});
   /* auto state = State(ground_truth); */
 
-  std::cout << State(ground_truth) << std::endl;
   std::vector<double> measurements = {M_PI / 2, M_PI / 2, M_PI / 2, M_PI / 2};
 
   // Optimize
