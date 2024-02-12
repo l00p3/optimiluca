@@ -15,8 +15,8 @@ int main() {
   std::vector<double> ground_truth = {0.0, M_PI / 2, M_PI, M_PI + (M_PI / 2)};
 
   // Define the initial guess
-  auto state = State({0.0, M_PI / 3, M_PI - 1.2, M_PI + 0.5});
-  /* auto state = State(ground_truth); */
+  /* auto state = State({0.0, M_PI / 3, M_PI - 1.2, M_PI + 0.5}); */
+  auto state = State(ground_truth);
 
   std::cout << State(ground_truth) << std::endl;
   std::vector<double> measurements = {M_PI / 2, M_PI / 2, M_PI / 2, M_PI / 2};
