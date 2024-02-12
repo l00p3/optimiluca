@@ -54,7 +54,7 @@ std::vector<double> Solver::solve(State &state,
 
     // Print stats
     if (verbose) {
-      std::cout << "\t ITER: " << iter << ", CHI: " << current_chi
+      std::cout << "\t ITER: " << iter + 1 << ", CHI: " << current_chi
                 << ", state: " << state << std::endl;
     }
 
