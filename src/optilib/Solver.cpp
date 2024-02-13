@@ -85,18 +85,14 @@ Solver::computeErrorAndJacobian(const State &state, const int &observer_id,
          "The value of observer_id is invalid");
 
   // Compute the error
-  Rot2D prediction_transpose =
-      Rot2D((state.get_rotation(observer_id).toRotationMatrix().transpose() *
-             state.get_rotation(observed_id).toRotationMatrix())
-                .transpose());
-  double error =
-      std::atan2(std::sin(prediction_transpose.angle() + z_i.angle()),
-                 std::cos(prediction_transpose.angle() + z_i.angle()));
+  auto error_so2 = state.get_rotation(observed_id).inverse() *
+                   state.get_rotation(observer_id) * z_i;
+  double error = error_so2.smallestAngle();
 
   // Compute the Jacobian
   RowVec4D J_i = RowVec4D().Zero();
-  J_i(0, observer_id) = 1.0;
-  J_i(0, observed_id) = -1.0;
+  J_i(0, observer_id) = -1.0;
+  J_i(0, observed_id) = 1.0;
 
   return {error, J_i};
 }

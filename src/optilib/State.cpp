@@ -29,7 +29,7 @@ void State::boxPlus(const Eigen::Vector3d &dx) {
   int current_state_idx = 1;
   for (const auto &dx_i : dx) {
     this->_rotations[current_state_idx] =
-        Rot2D(Rot2D(dx_i).toRotationMatrix().transpose() *
+        Rot2D(Rot2D(dx_i).toRotationMatrix() *
               this->_rotations[current_state_idx].toRotationMatrix());
     current_state_idx++;
   }
