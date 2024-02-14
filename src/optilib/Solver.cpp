@@ -85,9 +85,9 @@ Solver::computeErrorAndJacobian(const State &state, const int &observer_id,
          "The value of observer_id is invalid");
 
   // Compute the error
-  auto error_so2 = state.get_rotation(observed_id).inverse() *
-                   state.get_rotation(observer_id) * z_i;
-  double error = error_so2.smallestAngle();
+  Rot2D error_so2 = state.get_rotation(observed_id).inverse() *
+                    state.get_rotation(observer_id) * z_i;
+  double error = error_so2.smallestAngle(); // atan2(error_so2)
 
   // Compute the Jacobian
   RowVec4D J_i = RowVec4D().Zero();
