@@ -3,8 +3,8 @@
 #include <cmath>
 #include <iostream>
 
-#include <optilib/Solver.hpp>
-#include <optilib/State.hpp>
+#include <Solver.hpp>
+#include <State.hpp>
 #include <vector>
 
 using namespace optilib;
