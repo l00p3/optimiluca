@@ -75,13 +75,8 @@ std::vector<double> Solver::solve(State &state,
 
     // Compute the update
     // We fix the first state to avoid an underconstrained problem
-    Eigen::Vector3d eigen_dx = H.block<3, 3>(1, 1).ldlt().solve(b.tail(3));
-
-    // TODO: fix this
-    std::vector<double> dx(4, 0.0);
-    dx[1] = eigen_dx(0);
-    dx[2] = eigen_dx(1);
-    dx[3] = eigen_dx(2);
+    Eigen::VectorXd dx = Eigen::VectorXd::Zero(4);
+    dx.tail(3) = H.block<3, 3>(1, 1).ldlt().solve(b.tail(3));
 
     // Update the state
     state.boxPlus(dx);

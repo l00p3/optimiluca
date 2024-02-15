@@ -11,10 +11,10 @@ State::State(const std::vector<double> &angles) {
 }
 
 // ---------- METHODS ----------
-void State::boxPlus(const std::vector<double> &dx) {
+void State::boxPlus(const Eigen::VectorXd &dx) {
   auto zipped = std::views::zip(_rotations, dx);
-  std::ranges::for_each(zipped, [](const auto &thing) {
-    auto &[R, dtheta] = thing;
+  std::ranges::for_each(zipped, [](const auto &rotations_zipped) {
+    auto &[R, dtheta] = rotations_zipped;
     R = Eigen::Rotation2Dd(dtheta) * R;
   });
 }

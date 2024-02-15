@@ -13,7 +13,7 @@ public:
   State(const std::vector<double> &angles);
 
   // Methods
-  void boxPlus(const std::vector<double> &dx);
+  void boxPlus(const Eigen::VectorXd &dx);
 
   // Operators
   inline constexpr size_t size() const { return _rotations.size(); }
