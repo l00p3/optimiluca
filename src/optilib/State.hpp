@@ -3,9 +3,9 @@
 #include <eigen3/Eigen/Dense>
 #include <ostream>
 
-namespace optilib {
+using namespace std::numbers;
 
-using Rot2D = Eigen::Rotation2Dd;
+namespace optilib {
 
 class State {
 public:
@@ -13,15 +13,17 @@ public:
   State(const std::vector<double> &angles);
 
   // Methods
-  size_t size() const;
-  Rot2D get_rotation(const int &idx) const;
+  void boxPlus(const std::vector<double> &dx);
 
   // Operators
-  void boxPlus(const Eigen::Vector3d &dx);
+  inline constexpr size_t size() const { return _rotations.size(); }
+  const Eigen::Rotation2Dd &operator()(const int idx) const {
+    return _rotations.at(idx);
+  }
   friend std::ostream &operator<<(std::ostream &os, const State &state);
 
 private:
-  std::vector<Rot2D> _rotations;
+  std::vector<Eigen::Rotation2Dd> _rotations;
 };
 
 } // namespace optilib

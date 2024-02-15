@@ -1,12 +1,33 @@
-#include <cmath>
 #include <iostream>
 #include <limits>
+#include <numeric>
 
 #include "Solver.hpp"
 
-namespace optilib {
+// Linear System Entry Struct
+namespace {
+struct LinearSystemEntry {
 
-Solver::Solver(){};
+  LinearSystemEntry &operator+=(const LinearSystemEntry &rhs) {
+    H += rhs.H;
+    b += rhs.b;
+    current_chi += rhs.current_chi;
+    return *this;
+  }
+
+  friend LinearSystemEntry operator+(LinearSystemEntry lhs,
+                                     const LinearSystemEntry &rhs) {
+    lhs += rhs;
+    return lhs;
+  }
+
+  Eigen::Matrix4d H = Eigen::Matrix4d::Zero();
+  Eigen::Vector4d b = Eigen::Vector4d::Zero();
+  double current_chi = 0.0;
+};
+} // namespace
+
+namespace optilib {
 
 std::vector<double> Solver::solve(State &state,
                                   const std::vector<double> &measurements,
@@ -14,59 +35,62 @@ std::vector<double> Solver::solve(State &state,
 
   // Initialization
   const size_t state_size = state.size();
-  std::vector<double> chi_stats =
-      std::vector<double>(n_iters, std::numeric_limits<double>::infinity());
+  std::vector<double> chi_stats(n_iters, std::numeric_limits<double>::max());
+  std::vector<int> meas_indices(measurements.size());
+  std::ranges::iota(meas_indices, 0);
 
-  // Start printing
+  // VERBOSE
   if (verbose) {
     std::cout << "\n\t OPTIMIZATION STARTED ( initial guess: " << state
               << "):" << std::endl;
   }
 
+  // Function to apply to each entry of the Hessian H
+  auto to_linear_system_entry = [&](const int meas_idx) {
+    // Solve data association
+    const int observer_id = meas_idx;
+    const int observed_id = (meas_idx + 1) % state_size;
+
+    // Compute the error and jacobian
+    auto [e, J] =
+        computeErrorAndJacobian(state, observer_id, observed_id,
+                                Eigen::Rotation2Dd(measurements[meas_idx]));
+
+    // Create the entry of the linear system
+    LinearSystemEntry entry({J.transpose() * J, J.transpose() * e, e * e});
+
+    return entry;
+  };
+
   // For each iterations:
   for (int iter = 0; iter < n_iters; ++iter) {
 
-    // Initialization
-    double current_chi = 0.0;
-
-    // Initialize H and b
-    Eigen::Matrix4d H = Eigen::Matrix4d::Zero();
-    Eigen::Vector4d b = Eigen::Vector4d::Zero();
-
-    // For each measurements
-    for (size_t meas_idx = 0; meas_idx < measurements.size(); meas_idx++) {
-
-      // Compute the useful state indices
-      const int observer_id = meas_idx;
-      const int observed_id = (meas_idx + 1) % state_size;
-
-      // Compute the error and jacobian
-      auto [error, J_i] = computeErrorAndJacobian(
-          state, observer_id, observed_id, Rot2D(measurements[meas_idx]));
-
-      // Update the stats
-      current_chi += error * error;
-
-      // Update H and b
-      b += J_i.transpose() * error;
-      H += J_i.transpose() * J_i;
-    }
-
-    // Print stats
-    if (verbose) {
-      std::cout << "\t ITER: " << iter + 1 << ", CHI: " << current_chi
-                << ", state: " << state << std::endl;
-    }
+    // Compute the entry of the linear system for each measurement
+    const auto &[H, b, chi_square] = std::transform_reduce(
+        meas_indices.cbegin(), meas_indices.cend(), LinearSystemEntry(),
+        std::plus<>(), to_linear_system_entry);
 
     // Update the stats
-    chi_stats[iter] = current_chi;
+    chi_stats[iter] = chi_square;
 
     // Compute the update
     // We fix the first state to avoid an underconstrained problem
-    Eigen::Vector3d dx = H.block<3, 3>(1, 1).ldlt().solve(b.tail(3));
+    Eigen::Vector3d eigen_dx = H.block<3, 3>(1, 1).ldlt().solve(b.tail(3));
+
+    // TODO: fix this
+    std::vector<double> dx(4, 0.0);
+    dx[1] = eigen_dx(0);
+    dx[2] = eigen_dx(1);
+    dx[3] = eigen_dx(2);
 
     // Update the state
     state.boxPlus(dx);
+
+    // VERBOSE
+    if (verbose) {
+      std::cout << "\t ITER: " << iter + 0 << ", CHI: " << chi_square
+                << ", state: " << state << std::endl;
+    }
   }
 
   // Done
@@ -76,17 +100,11 @@ std::vector<double> Solver::solve(State &state,
 std::tuple<double, RowVec4D>
 Solver::computeErrorAndJacobian(const State &state, const int &observer_id,
                                 const int &observed_id,
-                                const Rot2D &z_i) const {
-
-  // Check index validity
-  assert(observed_id >= 0 && observed_id < state.size() &&
-         "The value of observed_id is invalid");
-  assert(observer_id >= 0 && observer_id < state.size() &&
-         "The value of observer_id is invalid");
+                                const Eigen::Rotation2Dd &z_i) const {
 
   // Compute the error
-  Rot2D error_so2 = state.get_rotation(observed_id).inverse() *
-                    state.get_rotation(observer_id) * z_i;
+  Eigen::Rotation2Dd error_so2 =
+      state(observed_id).inverse() * state(observer_id) * z_i;
   double error = error_so2.smallestAngle(); // atan2(error_so2)
 
   // Compute the Jacobian
