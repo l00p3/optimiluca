@@ -6,8 +6,6 @@
 
 namespace optilib {
 
-using RowVec4D = Eigen::Matrix<double, 1, 4>;
-
 class Solver {
 public:
   std::vector<double> solve(State &state,
@@ -16,7 +14,7 @@ public:
 
 private:
   // Utility functions
-  std::tuple<double, RowVec4D>
+  std::tuple<double, Eigen::MatrixXd>
   computeErrorAndJacobian(const State &state, const int &observer_id,
                           const int &observed_id,
                           const Eigen::Rotation2Dd &z_i) const;

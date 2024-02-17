@@ -21,8 +21,9 @@ struct LinearSystemEntry {
     return lhs;
   }
 
-  Eigen::Matrix4d H = Eigen::Matrix4d::Zero();
-  Eigen::Vector4d b = Eigen::Vector4d::Zero();
+  // TODO: dynamic values here
+  Eigen::MatrixXd H = Eigen::MatrixXd::Zero(6, 6);
+  Eigen::VectorXd b = Eigen::VectorXd::Zero(6);
   double current_chi = 0.0;
 };
 } // namespace
@@ -35,6 +36,7 @@ std::vector<double> Solver::solve(State &state,
 
   // Initialization
   const size_t state_size = state.size();
+  const size_t meas_size = measurements.size();
   std::vector<double> chi_stats(n_iters, std::numeric_limits<double>::max());
   std::vector<int> meas_indices(measurements.size());
   std::ranges::iota(meas_indices, 0);
@@ -48,6 +50,7 @@ std::vector<double> Solver::solve(State &state,
   // Function to apply to each entry of the Hessian H
   auto to_linear_system_entry = [&](const int meas_idx) {
     // Solve data association
+    // (TODO: for now we assume that one is observing the next)
     const int observer_id = meas_idx;
     const int observed_id = (meas_idx + 1) % state_size;
 
@@ -75,8 +78,12 @@ std::vector<double> Solver::solve(State &state,
 
     // Compute the update
     // We fix the first state to avoid an underconstrained problem
-    Eigen::VectorXd dx = Eigen::VectorXd::Zero(4);
-    dx.tail(3) = H.block<3, 3>(1, 1).ldlt().solve(b.tail(3));
+    // TODO: for now we assume always the first element of the state to stay
+    // fixed
+    Eigen::VectorXd dx = Eigen::VectorXd::Zero(state_size);
+    dx.tail(state_size - 1) = H.block(1, 1, state_size - 1, state_size - 1)
+                                  .ldlt()
+                                  .solve(b.tail(state_size - 1));
 
     // Update the state
     state.boxPlus(dx);
@@ -92,7 +99,7 @@ std::vector<double> Solver::solve(State &state,
   return chi_stats;
 };
 
-std::tuple<double, RowVec4D>
+std::tuple<double, Eigen::MatrixXd>
 Solver::computeErrorAndJacobian(const State &state, const int &observer_id,
                                 const int &observed_id,
                                 const Eigen::Rotation2Dd &z_i) const {
@@ -103,7 +110,7 @@ Solver::computeErrorAndJacobian(const State &state, const int &observer_id,
   double error = error_so2.smallestAngle(); // atan2(error_so2)
 
   // Compute the Jacobian
-  RowVec4D J_i = RowVec4D().Zero();
+  Eigen::MatrixXd J_i = Eigen::MatrixXd::Zero(1, state.size());
   J_i(0, observer_id) = -1.0;
   J_i(0, observed_id) = 1.0;
 
