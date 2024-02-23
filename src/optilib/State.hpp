@@ -17,9 +17,11 @@ public:
 
   // Operators
   inline constexpr size_t size() const { return _rotations.size(); }
+
   const Eigen::Rotation2Dd &operator()(const int idx) const {
     return _rotations.at(idx);
   }
+
   friend std::ostream &operator<<(std::ostream &os, const State &state);
 
 private:

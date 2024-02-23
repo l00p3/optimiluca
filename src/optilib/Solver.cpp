@@ -8,6 +8,9 @@
 namespace {
 struct LinearSystemEntry {
 
+  LinearSystemEntry(const size_t size)
+      : H{Eigen::MatrixXd::Zero(size, size)}, b{Eigen::VectorXd::Zero(size)} {}
+
   LinearSystemEntry &operator+=(const LinearSystemEntry &rhs) {
     H += rhs.H;
     b += rhs.b;
@@ -22,8 +25,8 @@ struct LinearSystemEntry {
   }
 
   // TODO: dynamic values here
-  Eigen::MatrixXd H = Eigen::MatrixXd::Zero(6, 6);
-  Eigen::VectorXd b = Eigen::VectorXd::Zero(6);
+  Eigen::MatrixXd H;
+  Eigen::VectorXd b;
   double current_chi = 0.0;
 };
 } // namespace
@@ -60,7 +63,10 @@ std::vector<double> Solver::solve(State &state,
                                 Eigen::Rotation2Dd(measurements[meas_idx]));
 
     // Create the entry of the linear system
-    LinearSystemEntry entry({J.transpose() * J, J.transpose() * e, e * e});
+    LinearSystemEntry entry(state_size);
+    entry.H = J.transpose() * J;
+    entry.b = J.transpose() * e;
+    entry.current_chi = e * e;
 
     return entry;
   };
@@ -70,8 +76,8 @@ std::vector<double> Solver::solve(State &state,
 
     // Compute the entry of the linear system for each measurement
     const auto &[H, b, chi_square] = std::transform_reduce(
-        meas_indices.cbegin(), meas_indices.cend(), LinearSystemEntry(),
-        std::plus<>(), to_linear_system_entry);
+        meas_indices.cbegin(), meas_indices.cend(),
+        LinearSystemEntry(state_size), std::plus<>(), to_linear_system_entry);
 
     // Update the stats
     chi_stats[iter] = chi_square;
