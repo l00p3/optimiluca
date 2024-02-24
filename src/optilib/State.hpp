@@ -24,6 +24,10 @@ public:
 
   friend std::ostream &operator<<(std::ostream &os, const State &state);
 
+  // Static methods
+  static std::tuple<State, std::vector<double>>
+  generateGroundTruthAndMeasurements(const int state_size);
+
 private:
   std::vector<Eigen::Rotation2Dd> _rotations;
 };

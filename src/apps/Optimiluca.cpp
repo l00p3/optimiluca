@@ -2,26 +2,29 @@
 #include <numeric>
 #include <vector>
 
+#include <CLIWrapper.hpp>
 #include <Solver.hpp>
 #include <State.hpp>
 
 using namespace optilib;
 using namespace std::numbers;
 
-int main() {
+int main(int argc, char **argv) {
+  // Parse the command line
+  CommandLineArguments cli_args;
+  cli_args.Initialize(argc, argv);
+
   // Initialization
   Solver solver;
-  std::vector<double> ground_truth = {
-      0.0, pi / 2, pi, pi + (pi / 2), pi + pi, pi + pi + (pi / 2)};
+
+  // Generate the ground truth and the measurements
+  auto [ground_truth, measurements] =
+      State::generateGroundTruthAndMeasurements(cli_args.state_size);
 
   // Define the initial guess
-  /* auto state = State({0.0, 0.0, 0.0, 0.0}); */
-  auto state = State({0.0, 0.0, 0.0, 1.6, 0.0, 0.0});
-  /* auto state = State({0.0, pi / 2 + 1.4, pi - 1.2, pi + 1.3}); */
-  /* auto state = State(ground_truth); */
-
-  std::vector<double> measurements = {pi / 2, pi / 2, pi / 2,
-                                      pi / 2, pi / 2, -pi / 2};
+  std::vector<double> angles(ground_truth.size(), 0.0);
+  angles[3] = ground_truth(3).angle();
+  State state(angles);
 
   // Optimize
   auto chi_stats = solver.solve(state, measurements, 10, true);
