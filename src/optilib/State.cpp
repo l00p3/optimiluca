@@ -21,10 +21,10 @@ void State::boxPlus(const Eigen::VectorXd &dx) {
 
 // ---------- OPERATORS ----------
 std::ostream &operator<<(std::ostream &os, const State &state) {
-  for (const auto &rot : state._rotations) {
-    const double angle_degrees = rot.angle() * (180 / pi);
-    os << angle_degrees << " ";
-  }
+  std::ranges::for_each(state._rotations, [&](const Eigen::Rotation2Dd &R) {
+    // Convert to degrees
+    os << R.angle() * (180 / pi) << " ";
+  });
   return os;
 }
 
