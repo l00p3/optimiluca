@@ -5,7 +5,7 @@ build:
 	@cmake --build build -j$(nproc)
 
 run: build
-	./build/src/apps/optimiluca
+	./build/src/apps/optimiluca -s 4
 
 clean:
 	@rm -rf build

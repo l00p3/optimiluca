@@ -8,7 +8,6 @@
 using namespace std::numbers;
 
 namespace optilib {
-
 State::State(const std::vector<double> &angles) {
   _rotations.reserve(angles.size());
   std::ranges::for_each(
@@ -46,14 +45,20 @@ State::generateGroundTruthAndMeasurements(const int state_size) {
   std::vector<double> measurements(state_size, 0.0);
 
   // Generate random angles
-  std::ranges::for_each(angles, [&](double &angle) { angle = generator(mt); });
+  double current_angle = 0.0;
+  /* std::ranges::for_each(angles, [&](double &angle) { angle = generator(mt);
+   * }); */
+  std::ranges::for_each(angles, [&](double &angle) {
+    angle = current_angle;
+    current_angle += pi / 2;
+  });
 
   // Generate the measurements (TODO: this is just to test, write it better)
-  // ALSO: this has a loop closure in the last position always, ake this
+  // ALSO: this has a loop closure in the last position always, make this
   // flexible
   for (int i = 0; i < state_size; i++) {
-    const size_t from_angle = angles[i];
-    const size_t to_angle = angles[(i + 1) % state_size];
+    const double from_angle = angles[i];
+    const double to_angle = angles[(i + 1) % state_size];
     measurements[i] = (Eigen::Rotation2Dd(from_angle).inverse() *
                        Eigen::Rotation2Dd(to_angle))
                           .angle();
