@@ -2,6 +2,7 @@
 #include <limits>
 #include <numeric>
 
+#include "Lumath.hpp"
 #include "Solver.hpp"
 
 // Linear System Entry Struct
@@ -120,11 +121,18 @@ Solver::computeErrorAndJacobian(const State &state, const int &observer_id,
                                 const Eigen::Rotation2Dd &z_i) const {
 
   // Compute the error
-  Eigen::Rotation2Dd error_so2 =
-      state(observed_id).inverse() * state(observer_id) * z_i;
-  double error = error_so2.smallestAngle(); // atan2(error_so2)
+  Eigen::Vector4d error =
+      flatten((state(observer_id).inverse() * state(observed_id))
+                  .toRotationMatrix()) -
+      flatten(z_i.toRotationMatrix());
 
   // Compute the Jacobian
+  Eigen::Vector4d J_ii =
+      flatten(rotationDerivative(state(observer_id).inverse()) *
+              state(observer_id).toRotationMatrix());
+  Eigen::Vector4d J_ij = flatten(state(observer_id).inverse() *
+                                 rotationDerivative(state(observer_id)));
+
   Eigen::MatrixXd J_i = Eigen::MatrixXd::Zero(1, state.size());
   J_i(0, observer_id) = -1.0;
   J_i(0, observed_id) = 1.0;
