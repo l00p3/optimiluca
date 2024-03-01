@@ -26,14 +26,20 @@ int main(int argc, char **argv) {
   angles[3] = ground_truth(3).angle();
   State state(angles);
 
+  if (cli_args.verbose) {
+    std::cout << std::endl << "Initial guess: " << std::endl;
+    std::cout << state << std::endl;
+  }
+
   // Optimize
-  auto chi_stats =
-      solver.solve(state, measurements, cli_args.max_iters, cli_args.verbose);
+  auto chi_stats = solver.solve(state, measurements, cli_args.termination_th,
+                                cli_args.max_iters, cli_args.verbose);
 
-  // VERBOSE
-  std::cout << std::endl << "Ground truth: " << std::endl;
-  std::cout << State(ground_truth) << std::endl;
+  if (cli_args.verbose) {
+    std::cout << std::endl << "Ground truth: " << std::endl;
+    std::cout << State(ground_truth) << std::endl;
 
-  std::cout << std::endl << "Optimized state: " << std::endl;
-  std::cout << state << std::endl;
+    std::cout << std::endl << "Optimized state: " << std::endl;
+    std::cout << state << std::endl;
+  }
 }

@@ -35,6 +35,7 @@ namespace optilib {
 
 std::vector<double> Solver::solve(State &state,
                                   const std::vector<double> &measurements,
+                                  const double termination_th,
                                   const int n_iters, const bool verbose) {
 
   // Initialization
@@ -47,7 +48,8 @@ std::vector<double> Solver::solve(State &state,
   // VERBOSE
   if (verbose) {
     std::cout << "\n\t OPTIMIZATION STARTED ( initial guess: " << state
-              << "):" << std::endl;
+              << "):" << std::endl
+              << std::endl;
   }
 
   // Function to apply to each entry of the Hessian H
@@ -97,6 +99,15 @@ std::vector<double> Solver::solve(State &state,
       std::cout << "\t ITER: " << iter + 0 << ", CHI: " << chi_square
                 << ", state: " << state << std::endl;
     }
+
+    // Termination
+    if (chi_square < termination_th) {
+      break;
+    }
+  }
+
+  if (verbose) {
+    std::cout << std::endl << "\t TERMINATED" << std::endl;
   }
 
   // Done
