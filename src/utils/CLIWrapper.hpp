@@ -8,4 +8,6 @@ struct CommandLineArguments {
 
   int state_size = 8;
   int n_closures = 1;
+  int max_iters = 100;
+  bool verbose = false;
 };

@@ -84,8 +84,6 @@ std::vector<double> Solver::solve(State &state,
 
     // Compute the update
     // We fix the first state to avoid an underconstrained problem
-    // TODO: for now we assume always the first element of the state to stay
-    // fixed
     Eigen::VectorXd dx = Eigen::VectorXd::Zero(state_size);
     dx.tail(state_size - 1) = H.block(1, 1, state_size - 1, state_size - 1)
                                   .ldlt()

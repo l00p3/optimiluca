@@ -26,7 +26,7 @@ public:
 
   // Static methods
   static std::tuple<State, std::vector<double>>
-  generateGroundTruthAndMeasurements(const int state_size);
+  generateStateAndMeasurements(const int state_size);
 
 private:
   std::vector<Eigen::Rotation2Dd> _rotations;

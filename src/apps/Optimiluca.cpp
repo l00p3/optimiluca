@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
 
   // Generate the ground truth and the measurements
   auto [ground_truth, measurements] =
-      State::generateGroundTruthAndMeasurements(cli_args.state_size);
+      State::generateStateAndMeasurements(cli_args.state_size);
 
   // Define the initial guess
   std::vector<double> angles(ground_truth.size(), 0.0);
@@ -27,7 +27,8 @@ int main(int argc, char **argv) {
   State state(angles);
 
   // Optimize
-  auto chi_stats = solver.solve(state, measurements, 10, true);
+  auto chi_stats =
+      solver.solve(state, measurements, cli_args.max_iters, cli_args.verbose);
 
   // VERBOSE
   std::cout << std::endl << "Ground truth: " << std::endl;
