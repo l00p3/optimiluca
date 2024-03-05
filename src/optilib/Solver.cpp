@@ -41,7 +41,7 @@ std::vector<double> Solver::solve(State &state,
   // Initialization
   const size_t state_size = state.size();
   const size_t meas_size = measurements.size();
-  std::vector<double> chi_stats(n_iters, std::numeric_limits<double>::max());
+  std::vector<double> chi_stats;
   std::vector<int> meas_indices(measurements.size());
   std::ranges::iota(meas_indices, 0);
 
@@ -72,6 +72,7 @@ std::vector<double> Solver::solve(State &state,
   };
 
   // For each iterations:
+  chi_stats.reserve(n_iters);
   for (int iter = 0; iter < n_iters; ++iter) {
 
     // Compute the entry of the linear system for each measurement
@@ -80,7 +81,7 @@ std::vector<double> Solver::solve(State &state,
         LinearSystemEntry(state_size), std::plus<>(), to_linear_system_entry);
 
     // Update the stats
-    chi_stats[iter] = chi_square;
+    chi_stats.emplace_back(chi_square);
 
     // Compute the update
     // We fix the first state to avoid an underconstrained problem
@@ -103,6 +104,7 @@ std::vector<double> Solver::solve(State &state,
       break;
     }
   }
+  chi_stats.shrink_to_fit();
 
   if (verbose) {
     std::cout << std::endl

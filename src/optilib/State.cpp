@@ -46,19 +46,15 @@ State::generateStateAndMeasurements(const int state_size) {
 
   // Generate random angles
   double current_angle = 0.0;
-  /* std::ranges::for_each(angles, [&](double &angle) { angle = generator(mt);
-   * }); */
-  std::ranges::for_each(angles, [&](double &angle) {
-    angle = current_angle;
-    current_angle += pi / 4;
-  });
+  std::ranges::for_each(angles, [&](double &angle) { angle = generator(mt); });
+  angles[0] = 0.0;
 
   // Generate the measurements (TODO: this is just to test, write it better)
   // ALSO: this has a loop closure in the last position always, make this
   // flexible
   for (int i = 0; i < state_size; i++) {
-    const double from_angle = angles[i];
-    const double to_angle = angles[(i + 1) % state_size];
+    const double &from_angle = angles[i];
+    const double &to_angle = angles[(i + 1) % state_size];
     measurements[i] = (Eigen::Rotation2Dd(from_angle).inverse() *
                        Eigen::Rotation2Dd(to_angle))
                           .angle();
