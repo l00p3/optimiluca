@@ -108,7 +108,8 @@ std::vector<double> Solver::solve(State &state,
 
   if (verbose) {
     std::cout << std::endl
-              << "\t TERMINATED WITH ERROR: " << chi_stats.back() << std::endl;
+              << "\t TERMINATED WITH CHI_SQUARE: " << chi_stats.back()
+              << std::endl;
   }
 
   // Done

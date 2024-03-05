@@ -39,5 +39,8 @@ int main(int argc, char **argv) {
 
     std::cout << std::endl << "Optimized state: " << std::endl;
     std::cout << state << std::endl;
+
+    std::cout << std::endl
+              << "Error: " << state.distance(ground_truth) << std::endl;
   }
 }

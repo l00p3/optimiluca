@@ -14,6 +14,7 @@ public:
 
   // Methods
   void boxPlus(const Eigen::VectorXd &dx);
+  double distance(const State &other) const;
 
   // Operators
   inline constexpr size_t size() const { return _rotations.size(); }

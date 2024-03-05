@@ -23,6 +23,19 @@ void State::boxPlus(const Eigen::VectorXd &dx) {
   });
 }
 
+double State::distance(const State &other) const {
+  double distance = 0.0;
+
+  auto zipped_rotations = std::views::zip(this->_rotations, other._rotations);
+  std::ranges::for_each(zipped_rotations, [&](const auto rots) {
+    const auto &[R1, R2] = rots;
+    distance +=
+        std::abs(R1.smallestPositiveAngle() - R2.smallestPositiveAngle());
+  });
+
+  return distance;
+}
+
 // ---------- OPERATORS ----------
 std::ostream &operator<<(std::ostream &os, const State &state) {
   std::ranges::for_each(state._rotations, [&](const Eigen::Rotation2Dd &R) {
@@ -48,9 +61,7 @@ State::generateStateAndMeasurements(const int state_size) {
   std::ranges::for_each(angles, [&](double &angle) { angle = generator(mt); });
   angles[0] = 0.0; // The first at the origin
 
-  // Generate the measurements (TODO: this is just to test, write it better)
-  // ALSO: this has a loop closure in the last position always, make this
-  // flexible
+  // Generate the measurements
   for (int i = 0; i < state_size; i++) {
     const double &from_angle = angles[i];
     const double &to_angle = angles[(i + 1) % state_size];
