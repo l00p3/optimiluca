@@ -24,16 +24,13 @@ void State::boxPlus(const Eigen::VectorXd &dx) {
 }
 
 double State::distance(const State &other) const {
-  double distance = 0.0;
-
-  auto zipped_rotations = std::views::zip(this->_rotations, other._rotations);
-  std::ranges::for_each(zipped_rotations, [&](const auto rots) {
-    const auto &[R1, R2] = rots;
-    distance +=
-        std::abs(R1.smallestPositiveAngle() - R2.smallestPositiveAngle());
-  });
-
-  return distance;
+  return std::transform_reduce(
+      this->_rotations.cbegin(), this->_rotations.cend(),
+      other._rotations.cbegin(), 0.0, std::plus<double>(),
+      [&](const Eigen::Rotation2Dd &R1, const Eigen::Rotation2Dd &R2) {
+        return std::abs(R1.smallestPositiveAngle() -
+                        R2.smallestPositiveAngle());
+      });
 }
 
 // ---------- OPERATORS ----------
