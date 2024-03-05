@@ -27,7 +27,7 @@ void State::boxPlus(const Eigen::VectorXd &dx) {
 std::ostream &operator<<(std::ostream &os, const State &state) {
   std::ranges::for_each(state._rotations, [&](const Eigen::Rotation2Dd &R) {
     // Convert to degrees
-    os << R.angle() * (180 / pi) << " ";
+    os << R.smallestPositiveAngle() * (180 / pi) << " ";
   });
   return os;
 }
@@ -45,9 +45,8 @@ State::generateStateAndMeasurements(const int state_size) {
   std::vector<double> measurements(state_size, 0.0);
 
   // Generate random angles
-  double current_angle = 0.0;
   std::ranges::for_each(angles, [&](double &angle) { angle = generator(mt); });
-  angles[0] = 0.0;
+  angles[0] = 0.0; // The first at the origin
 
   // Generate the measurements (TODO: this is just to test, write it better)
   // ALSO: this has a loop closure in the last position always, make this

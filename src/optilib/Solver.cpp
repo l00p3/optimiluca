@@ -100,7 +100,7 @@ std::vector<double> Solver::solve(State &state,
     }
 
     // Termination
-    if (chi_square < termination_th) {
+    if (chi_square < termination_th || dx.norm() < 1e-10) {
       break;
     }
   }
