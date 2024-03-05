@@ -18,6 +18,8 @@ public:
   // Operators
   inline constexpr size_t size() const { return _rotations.size(); }
 
+  Eigen::Rotation2Dd &operator()(const int idx) { return _rotations.at(idx); }
+
   const Eigen::Rotation2Dd &operator()(const int idx) const {
     return _rotations.at(idx);
   }

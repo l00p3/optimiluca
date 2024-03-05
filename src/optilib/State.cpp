@@ -50,7 +50,7 @@ State::generateStateAndMeasurements(const int state_size) {
    * }); */
   std::ranges::for_each(angles, [&](double &angle) {
     angle = current_angle;
-    current_angle += pi / 2;
+    current_angle += pi / 4;
   });
 
   // Generate the measurements (TODO: this is just to test, write it better)

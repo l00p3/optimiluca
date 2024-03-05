@@ -15,9 +15,9 @@ public:
 
 private:
   // Utility functions
-  std::tuple<double, Eigen::MatrixXd>
-  computeErrorAndJacobian(const State &state, const int &observer_id,
-                          const int &observed_id,
+  std::tuple<Eigen::Vector4d, Eigen::MatrixXd>
+  computeErrorAndJacobian(const State &state, const int from_idx,
+                          const int to_idx,
                           const Eigen::Rotation2Dd &z_i) const;
 };
 

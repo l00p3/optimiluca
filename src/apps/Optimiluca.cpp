@@ -21,10 +21,8 @@ int main(int argc, char **argv) {
   auto [ground_truth, measurements] =
       State::generateStateAndMeasurements(cli_args.state_size);
 
-  // Define the initial guess
-  std::vector<double> angles(ground_truth.size(), 0.0);
-  angles[3] = ground_truth(3).angle();
-  State state(angles);
+  // Define the initial guess at 0
+  State state(std::vector<double>(cli_args.state_size, 0.0));
 
   if (cli_args.verbose) {
     std::cout << std::endl << "Initial guess: " << std::endl;

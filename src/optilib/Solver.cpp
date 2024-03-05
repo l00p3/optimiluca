@@ -25,7 +25,6 @@ struct LinearSystemEntry {
     return lhs;
   }
 
-  // TODO: dynamic values here
   Eigen::MatrixXd H;
   Eigen::VectorXd b;
   double current_chi = 0.0;
@@ -56,20 +55,18 @@ std::vector<double> Solver::solve(State &state,
   // Function to apply to each entry of the Hessian H
   auto to_linear_system_entry = [&](const int meas_idx) {
     // Solve data association
-    // (TODO: for now we assume that one is observing the next)
-    const int observer_id = meas_idx;
-    const int observed_id = (meas_idx + 1) % state_size;
+    const int from_idx = meas_idx;
+    const int to_idx = (meas_idx + 1) % state_size;
 
     // Compute the error and jacobian
-    auto [e, J] =
-        computeErrorAndJacobian(state, observer_id, observed_id,
-                                Eigen::Rotation2Dd(measurements[meas_idx]));
+    auto [e, J] = computeErrorAndJacobian(
+        state, from_idx, to_idx, Eigen::Rotation2Dd(measurements[meas_idx]));
 
     // Create the entry of the linear system
     LinearSystemEntry entry(state_size);
     entry.H = J.transpose() * J;
     entry.b = J.transpose() * e;
-    entry.current_chi = e * e;
+    entry.current_chi = e.squaredNorm();
 
     return entry;
   };
@@ -90,7 +87,7 @@ std::vector<double> Solver::solve(State &state,
     Eigen::VectorXd dx = Eigen::VectorXd::Zero(state_size);
     dx.tail(state_size - 1) = H.block(1, 1, state_size - 1, state_size - 1)
                                   .ldlt()
-                                  .solve(b.tail(state_size - 1));
+                                  .solve(-b.tail(state_size - 1));
 
     // Update the state
     state.boxPlus(dx);
@@ -108,36 +105,32 @@ std::vector<double> Solver::solve(State &state,
   }
 
   if (verbose) {
-    std::cout << std::endl << "\t TERMINATED" << std::endl;
+    std::cout << std::endl
+              << "\t TERMINATED WITH ERROR: " << chi_stats.back() << std::endl;
   }
 
   // Done
   return chi_stats;
 };
 
-std::tuple<double, Eigen::MatrixXd>
-Solver::computeErrorAndJacobian(const State &state, const int &observer_id,
-                                const int &observed_id,
+// --- UTILITY FUNCTIONS ---
+std::tuple<Eigen::Vector4d, Eigen::MatrixXd>
+Solver::computeErrorAndJacobian(const State &state, const int from_idx,
+                                const int to_idx,
                                 const Eigen::Rotation2Dd &z_i) const {
 
   // Compute the error
   Eigen::Vector4d error =
-      flatten((state(observer_id).inverse() * state(observed_id))
-                  .toRotationMatrix()) -
-      flatten(z_i.toRotationMatrix());
+      flatten(state(from_idx).inverse() * state(to_idx)) - flatten(z_i);
 
   // Compute the Jacobian
-  Eigen::Vector4d J_ii =
-      flatten(rotationDerivative(state(observer_id).inverse()) *
-              state(observer_id).toRotationMatrix());
-  Eigen::Vector4d J_ij = flatten(state(observer_id).inverse() *
-                                 rotationDerivative(state(observer_id)));
+  Eigen::MatrixXd J = Eigen::MatrixXd::Zero(4, state.size());
+  J.col(from_idx) =
+      flatten(rotationDerivative(state(from_idx)).transpose() * state(to_idx));
+  J.col(to_idx) =
+      flatten(state(from_idx).inverse() * rotationDerivative(state(to_idx)));
 
-  Eigen::MatrixXd J_i = Eigen::MatrixXd::Zero(1, state.size());
-  J_i(0, observer_id) = -1.0;
-  J_i(0, observed_id) = 1.0;
-
-  return {error, J_i};
+  return {error, J};
 }
 
 } // namespace optilib
