@@ -2,7 +2,8 @@
 Optimiluca: Optimization with Least-Squares exercises from Luca
 
 # Requirements
- - gcc >= 12.1.0
+ - gcc >= 13.1.0
+ - cmake >= 3.22.1
  - eigen >= 3.4.0
 
 # Usage
