@@ -30,7 +30,7 @@ public:
 
   // Static methods
   static std::tuple<State, std::vector<double>>
-  generateStateAndMeasurements(const int state_size);
+  generateStateAndMeasurements(const int state_size, const int n_closures);
 
 private:
   std::vector<Eigen::Rotation2Dd> _rotations;

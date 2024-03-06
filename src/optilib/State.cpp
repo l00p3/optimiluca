@@ -50,7 +50,8 @@ std::ostream &operator<<(std::ostream &os, const State &state) {
 
 // ---------- STATIC METHODS ----------
 std::tuple<State, std::vector<double>>
-State::generateStateAndMeasurements(const int state_size) {
+State::generateStateAndMeasurements(const int state_size,
+                                    const int n_closures) {
   // Initialize random number generator
   std::random_device rd;
   std::mt19937 mt(rd());
