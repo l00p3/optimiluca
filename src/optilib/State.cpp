@@ -49,7 +49,7 @@ std::ostream &operator<<(std::ostream &os, const State &state) {
 }
 
 // ---------- STATIC METHODS ----------
-std::tuple<State, std::vector<double>>
+std::tuple<State, std::vector<Measurement>>
 State::generateStateAndMeasurements(const int state_size,
                                     const int n_closures) {
   // Initialize random number generator
@@ -59,18 +59,19 @@ State::generateStateAndMeasurements(const int state_size,
 
   // Initialize vector of angles and measurements
   std::vector<double> angles(state_size, 0.0);
-  std::vector<double> measurements(state_size, 0.0);
+  std::vector<Measurement> measurements;
 
   // Generate random angles
   std::ranges::for_each(angles, [&](double &angle) { angle = generator(mt); });
   angles[0] = 0.0; // The first at the origin
 
   // Generate the measurements
+  measurements.reserve(state_size + n_closures);
   for (int i = 0; i < state_size; i++) {
-    const double &from_angle = angles[i];
-    const double &to_angle = angles[(i + 1) % state_size];
-    measurements[i] = (Eigen::Rotation2Dd(from_angle).inverse() *
-                       Eigen::Rotation2Dd(to_angle))
+    int from = i;
+    int to = (i + 1) % state_size;
+    measurements[i] = (Eigen::Rotation2Dd(angles[from]).inverse() *
+                       Eigen::Rotation2Dd(angles[to]))
                           .angle();
   }
 

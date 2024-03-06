@@ -7,6 +7,12 @@ using namespace std::numbers;
 
 namespace optilib {
 
+struct Measurement {
+  double angle;
+  int from;
+  int to;
+};
+
 class State {
 public:
   // Constructors
@@ -29,7 +35,7 @@ public:
   friend std::ostream &operator<<(std::ostream &os, const State &state);
 
   // Static methods
-  static std::tuple<State, std::vector<double>>
+  static std::tuple<State, std::vector<Measurement>>
   generateStateAndMeasurements(const int state_size, const int n_closures);
 
 private:

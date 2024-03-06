@@ -18,8 +18,8 @@ int main(int argc, char **argv) {
   Solver solver;
 
   // Generate the ground truth and the measurements
-  auto [ground_truth, measurements] =
-      State::generateStateAndMeasurements(cli_args.state_size);
+  auto [ground_truth, measurements] = State::generateStateAndMeasurements(
+      cli_args.state_size, cli_args.n_closures);
 
   // Define the initial guess at 0
   State state(cli_args.state_size);
