@@ -1,5 +1,4 @@
 #include <iostream>
-#include <limits>
 #include <numeric>
 
 #include "Lumath.hpp"
@@ -36,7 +35,7 @@ namespace optilib {
 std::vector<double> Solver::solve(State &state,
                                   const std::vector<double> &measurements,
                                   const double termination_th,
-                                  const int n_iters, const bool verbose) {
+                                  const int n_iters, const int verbose_level) {
 
   // Initialization
   const size_t state_size = state.size();
@@ -46,10 +45,12 @@ std::vector<double> Solver::solve(State &state,
   std::ranges::iota(meas_indices, 0);
 
   // VERBOSE
-  if (verbose) {
-    std::cout << "\n\t OPTIMIZATION STARTED ( initial guess: " << state
-              << "):" << std::endl
-              << std::endl;
+  if (verbose_level) {
+    std::cout << "\n\t OPTIMIZATION STARTED";
+    if (verbose_level == 2) {
+      std::cout << " ( initial guess: " << state << ")";
+    }
+    std::cout << std::endl << std::endl;
   }
 
   // Function to apply to each entry of the Hessian H
@@ -94,9 +95,12 @@ std::vector<double> Solver::solve(State &state,
     state.boxPlus(dx);
 
     // VERBOSE
-    if (verbose) {
-      std::cout << "\t ITER: " << iter + 0 << ", CHI: " << chi_square
-                << ", state: " << state << std::endl;
+    if (verbose_level) {
+      std::cout << "\t ITER: " << iter + 0 << ", CHI SQUARE: " << chi_square
+                << std::endl;
+      if (verbose_level == 2) {
+        std::cout << "\t State: " << state << std::endl;
+      }
     }
 
     // Termination
@@ -106,9 +110,9 @@ std::vector<double> Solver::solve(State &state,
   }
   chi_stats.shrink_to_fit();
 
-  if (verbose) {
+  if (verbose_level) {
     std::cout << std::endl
-              << "\t TERMINATED WITH CHI_SQUARE: " << chi_stats.back()
+              << "\t TERMINATED WITH CHI SQUARE: " << chi_stats.back()
               << std::endl;
   }
 

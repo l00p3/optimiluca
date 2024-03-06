@@ -13,7 +13,8 @@ int CommandLineArguments::Initialize(int argc, char **argv) {
                      "Error threshold for termination.");
   cli_app.add_option("-i, --max-iters", max_iters,
                      "Max numbers of iterations for the solver.");
-  cli_app.add_option("-v, --verbose", verbose, "Set verbosity.");
+  cli_app.add_option("-v, --verbose_level", verbose_level,
+                     "Set verbosity level 0 to 2.");
 
   CLI11_PARSE(cli_app, argc, argv);
 

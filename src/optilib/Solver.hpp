@@ -7,11 +7,13 @@
 namespace optilib {
 
 class Solver {
+
 public:
   std::vector<double> solve(State &state,
                             const std::vector<double> &measurements,
                             const double termination_th = 1e-5,
-                            const int n_iters = 10, const bool verbose = false);
+                            const int n_iters = 10,
+                            const int verbose_level = 1);
 
 private:
   // Utility functions

@@ -4,5 +4,8 @@
 
 Eigen::Matrix2d rotationDerivative(const Eigen::Rotation2Dd &R);
 
-Eigen::Vector4d flatten(const Eigen::Matrix2d &M);
+inline Eigen::Vector4d flatten(const Eigen::Matrix2d &M) {
+  return M.reshaped();
+};
+
 Eigen::Vector4d flatten(const Eigen::Rotation2Dd &R);

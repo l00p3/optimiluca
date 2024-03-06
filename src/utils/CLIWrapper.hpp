@@ -10,5 +10,5 @@ struct CommandLineArguments {
   int n_closures = 1;
   double termination_th = 1e-5;
   int max_iters = 100;
-  bool verbose = false;
+  int verbose_level = 1;
 };
