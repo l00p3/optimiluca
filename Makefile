@@ -5,7 +5,7 @@ build:
 	@cmake --build build -j$(nproc)
 
 run: build
-	./build/src/apps/optimiluca -s 50 --max-iters 1000 -v 1
+	./build/src/apps/optimiluca -s 5 --max-iters 1000 -v 2
 
 clean:
 	@rm -rf build

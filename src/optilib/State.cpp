@@ -57,41 +57,37 @@ std::ostream &operator<<(std::ostream &os, const State &state) {
 std::tuple<State, std::vector<Measurement>>
 State::generateStateAndMeasurements(const int state_size,
                                     const int n_closures) {
-  // Initialize random number generator
+  // Initialize random number generator from 0 to 360 degrees
   std::random_device rd;
   std::mt19937 mt(rd());
-  std::uniform_real_distribution<double> generator(0.0,
-                                                   2 * pi); // 0 to 360 degrees
-
-  // Initialize list of indices for loops
-  std::vector<int> state_ids = std::vector<int>(state_size);
-  std::iota(state_ids.begin(), state_ids.end(), 0);
+  std::uniform_real_distribution<double> generator(0.0, 2 * pi);
 
   // Initialize vector of angles and measurements
-  std::vector<Eigen::Rotation2Dd> rotations;
-  rotations.reserve(state_size);
-  std::vector<Measurement> measurements;
+  std::vector<Eigen::Rotation2Dd> rotations(state_size,
+                                            Eigen::Rotation2Dd(0.0));
+  std::vector<Measurement> measurements(state_size);
   measurements.reserve((state_size - 1) + n_closures);
 
-  // Generate the state
-  std::ranges::for_each(state_ids, [&](const int state_idx) {
-    rotations.emplace_back(Eigen::Rotation2Dd(generator(mt)));
-  });
-  rotations[0] = Eigen::Rotation2Dd(0.0); // The first at the origin
-  State state = State(std::move(rotations));
+  // Generate random rotations
+  std::ranges::for_each(rotations.begin() + 1, rotations.end(),
+                        [&](Eigen::Rotation2Dd &R) {
+                          R = std::move(Eigen::Rotation2Dd(generator(mt)));
+                        });
 
-  // Generate the measurements
-  std::ranges::for_each(state_ids, [&](const int state_idx) {
-    int from = state_idx;
-    int to = (state_idx + 1) % state_size;
-    measurements.emplace_back(state(from).inverse() * state(to), from, to);
-  });
+  // Generate pose to pose measurements
+  std::ranges::for_each(std::views::enumerate(rotations).cbegin(),
+                        std::views::enumerate(rotations).cend() - 1,
+                        [&](const auto &idx_R) {
+                          const auto &[idx, R] = idx_R;
+                          measurements.emplace_back(
+                              R.inverse() * rotations[idx + 1], idx, idx + 1);
+                        });
 
   // Generate the closures
   // TODO
 
-  // Return the state generated from these angles
-  return {state, measurements};
+  // Return the state and measurements
+  return {State(std::move(rotations)), measurements};
 }
 
 } // namespace optilib

@@ -96,7 +96,7 @@ std::vector<double> Solver::solve(State &state,
       std::cout << "\t ITER: " << iter + 0 << ", CHI SQUARE: " << chi_square
                 << std::endl;
       if (verbose_level == 2) {
-        std::cout << "\t State: " << state << std::endl;
+        std::cout << "\t\t State: " << state << std::endl;
       }
     }
 
