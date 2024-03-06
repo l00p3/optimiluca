@@ -60,19 +60,20 @@ State::generateStateAndMeasurements(const int state_size,
   // Initialize random number generator from 0 to 360 degrees
   std::random_device rd;
   std::mt19937 mt(rd());
-  std::uniform_real_distribution<double> generator(0.0, 2 * pi);
+  std::uniform_real_distribution<double> angles_generator(0.0, 2 * pi);
+  std::uniform_int_distribution<int> closures_generator(0, state_size - 1);
 
   // Initialize vector of angles and measurements
   std::vector<Eigen::Rotation2Dd> rotations(state_size,
                                             Eigen::Rotation2Dd(0.0));
-  std::vector<Measurement> measurements(state_size);
+  std::vector<Measurement> measurements;
   measurements.reserve((state_size - 1) + n_closures);
 
   // Generate random rotations
-  std::ranges::for_each(rotations.begin() + 1, rotations.end(),
-                        [&](Eigen::Rotation2Dd &R) {
-                          R = std::move(Eigen::Rotation2Dd(generator(mt)));
-                        });
+  std::ranges::for_each(
+      rotations.begin() + 1, rotations.end(), [&](Eigen::Rotation2Dd &R) {
+        R = std::move(Eigen::Rotation2Dd(angles_generator(mt)));
+      });
 
   // Generate pose to pose measurements
   std::ranges::for_each(std::views::enumerate(rotations).cbegin(),
@@ -84,7 +85,19 @@ State::generateStateAndMeasurements(const int state_size,
                         });
 
   // Generate the closures
-  // TODO
+  for (int clos_idx = 0; clos_idx < n_closures; ++clos_idx) {
+    const int from = closures_generator(mt);
+    int to = closures_generator(mt);
+    // Avoid self-measures
+    if (from == to) {
+      to = (from + 1) % state_size;
+    }
+    std::cout << from << " " << to << std::endl;
+    measurements.emplace_back(rotations[from].inverse() * rotations[to], from,
+                              to);
+  }
+
+  exit(0);
 
   // Return the state and measurements
   return {State(std::move(rotations)), measurements};

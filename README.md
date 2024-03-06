@@ -10,4 +10,7 @@ Optimiluca: Optimization library by Luca
 ```bash
 make run
 ```
-
+## TODO
+ - Add a checker on the cli args
+ - Generate closures (finish)
+ - DogLeg solver
