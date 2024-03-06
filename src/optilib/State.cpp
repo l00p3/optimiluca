@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <iostream>
 #include <numeric>
 #include <random>
@@ -13,6 +14,10 @@ State::State(const std::vector<double> &angles) {
   _rotations.reserve(angles.size());
   std::ranges::for_each(
       angles, [&](const double &theta) { _rotations.emplace_back(theta); });
+}
+
+State::State(const std::vector<Eigen::Rotation2Dd> &&rotations) {
+  _rotations = std::move(rotations);
 }
 
 State::State(const size_t size) {
@@ -55,28 +60,38 @@ State::generateStateAndMeasurements(const int state_size,
   // Initialize random number generator
   std::random_device rd;
   std::mt19937 mt(rd());
-  std::uniform_real_distribution<double> generator(0.0, 2 * pi);
+  std::uniform_real_distribution<double> generator(0.0,
+                                                   2 * pi); // 0 to 360 degrees
+
+  // Initialize list of indices for loops
+  std::vector<int> state_ids = std::vector<int>(state_size);
+  std::iota(state_ids.begin(), state_ids.end(), 0);
 
   // Initialize vector of angles and measurements
-  std::vector<double> angles(state_size, 0.0);
+  std::vector<Eigen::Rotation2Dd> rotations;
+  rotations.reserve(state_size);
   std::vector<Measurement> measurements;
+  measurements.reserve((state_size - 1) + n_closures);
 
-  // Generate random angles
-  std::ranges::for_each(angles, [&](double &angle) { angle = generator(mt); });
-  angles[0] = 0.0; // The first at the origin
+  // Generate the state
+  std::ranges::for_each(state_ids, [&](const int state_idx) {
+    rotations.emplace_back(Eigen::Rotation2Dd(generator(mt)));
+  });
+  rotations[0] = Eigen::Rotation2Dd(0.0); // The first at the origin
+  State state = State(std::move(rotations));
 
   // Generate the measurements
-  measurements.reserve(state_size + n_closures);
-  for (int i = 0; i < state_size; i++) {
-    int from = i;
-    int to = (i + 1) % state_size;
-    measurements[i] = (Eigen::Rotation2Dd(angles[from]).inverse() *
-                       Eigen::Rotation2Dd(angles[to]))
-                          .angle();
-  }
+  std::ranges::for_each(state_ids, [&](const int state_idx) {
+    int from = state_idx;
+    int to = (state_idx + 1) % state_size;
+    measurements.emplace_back(state(from).inverse() * state(to), from, to);
+  });
+
+  // Generate the closures
+  // TODO
 
   // Return the state generated from these angles
-  return {State(angles), measurements};
+  return {state, measurements};
 }
 
 } // namespace optilib

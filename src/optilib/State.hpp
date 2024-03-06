@@ -8,7 +8,7 @@ using namespace std::numbers;
 namespace optilib {
 
 struct Measurement {
-  double angle;
+  Eigen::Rotation2Dd z;
   int from;
   int to;
 };
@@ -17,6 +17,7 @@ class State {
 public:
   // Constructors
   State(const std::vector<double> &angles);
+  State(const std::vector<Eigen::Rotation2Dd> &&rotations);
   State(const size_t size);
 
   // Methods

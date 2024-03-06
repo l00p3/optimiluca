@@ -3,6 +3,7 @@
 
 #include "Lumath.hpp"
 #include "Solver.hpp"
+#include "State.hpp"
 
 // Linear System Entry Struct
 namespace {
@@ -33,7 +34,7 @@ struct LinearSystemEntry {
 namespace optilib {
 
 std::vector<double> Solver::solve(State &state,
-                                  const std::vector<double> &measurements,
+                                  const std::vector<Measurement> &measurements,
                                   const double termination_th,
                                   const int n_iters, const int verbose_level) {
 
@@ -53,15 +54,11 @@ std::vector<double> Solver::solve(State &state,
     std::cout << std::endl << std::endl;
   }
 
+  // // TODO: here meas instead of meas_idx
   // Function to apply to each entry of the Hessian H
   auto to_linear_system_entry = [&](const int meas_idx) {
-    // Solve data association
-    const int from_idx = meas_idx;
-    const int to_idx = (meas_idx + 1) % state_size;
-
     // Compute the error and jacobian
-    auto [e, J] = computeErrorAndJacobian(
-        state, from_idx, to_idx, Eigen::Rotation2Dd(measurements[meas_idx]));
+    auto [e, J] = computeErrorAndJacobian(state, measurements[meas_idx]);
 
     // Create the entry of the linear system
     LinearSystemEntry entry(state_size);
@@ -122,13 +119,16 @@ std::vector<double> Solver::solve(State &state,
 
 // --- UTILITY FUNCTIONS ---
 std::tuple<Eigen::Vector4d, Eigen::MatrixXd>
-Solver::computeErrorAndJacobian(const State &state, const int from_idx,
-                                const int to_idx,
-                                const Eigen::Rotation2Dd &z_i) const {
+Solver::computeErrorAndJacobian(const State &state,
+                                const Measurement &meas) const {
+
+  // Initialization
+  const int &from_idx = meas.from;
+  const int &to_idx = meas.to;
 
   // Compute the error
   Eigen::Vector4d error =
-      flatten(state(from_idx).inverse() * state(to_idx)) - flatten(z_i);
+      flatten(state(from_idx).inverse() * state(to_idx)) - flatten(meas.z);
 
   // Compute the Jacobian
   Eigen::MatrixXd J = Eigen::MatrixXd::Zero(4, state.size());
