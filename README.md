@@ -1,5 +1,5 @@
 # Optimiluca
-Optimiluca: Optimization with Least-Squares exercises from Luca
+Optimiluca: Optimization library by Luca
 
 # Requirements
  - gcc >= 13.1.0
