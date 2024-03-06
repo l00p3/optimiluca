@@ -16,7 +16,7 @@ State::State(const std::vector<double> &angles) {
       angles, [&](const double &theta) { _rotations.emplace_back(theta); });
 }
 
-State::State(const std::vector<Eigen::Rotation2Dd> &&rotations) {
+State::State(std::vector<Eigen::Rotation2Dd> &&rotations) {
   _rotations = std::move(rotations);
 }
 

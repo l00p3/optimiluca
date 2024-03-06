@@ -17,7 +17,7 @@ class State {
 public:
   // Constructors
   State(const std::vector<double> &angles);
-  State(const std::vector<Eigen::Rotation2Dd> &&rotations);
+  State(std::vector<Eigen::Rotation2Dd> &&rotations);
   State(const size_t size);
 
   // Methods
