@@ -4,6 +4,7 @@
 #include <ranges>
 
 #include <State.hpp>
+#include <vector>
 
 using namespace std::numbers;
 
@@ -12,6 +13,10 @@ State::State(const std::vector<double> &angles) {
   _rotations.reserve(angles.size());
   std::ranges::for_each(
       angles, [&](const double &theta) { _rotations.emplace_back(theta); });
+}
+
+State::State(const size_t size) {
+  _rotations = std::vector<Eigen::Rotation2Dd>(size, Eigen::Rotation2Dd(0.0));
 }
 
 // ---------- METHODS ----------
@@ -24,6 +29,7 @@ void State::boxPlus(const Eigen::VectorXd &dx) {
 }
 
 double State::distance(const State &other) const {
+  // L1-norm of the angles distance
   return std::transform_reduce(
       this->_rotations.cbegin(), this->_rotations.cend(),
       other._rotations.cbegin(), 0.0, std::plus<double>(),

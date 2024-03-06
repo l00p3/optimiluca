@@ -11,6 +11,7 @@ class State {
 public:
   // Constructors
   State(const std::vector<double> &angles);
+  State(const size_t size);
 
   // Methods
   void boxPlus(const Eigen::VectorXd &dx);

@@ -22,7 +22,7 @@ int main(int argc, char **argv) {
       State::generateStateAndMeasurements(cli_args.state_size);
 
   // Define the initial guess at 0
-  State state(std::vector<double>(cli_args.state_size, 0.0));
+  State state(cli_args.state_size);
 
   if (cli_args.verbose) {
     std::cout << std::endl << "Initial guess: " << std::endl;
