@@ -57,6 +57,14 @@ std::ostream &operator<<(std::ostream &os, const State &state) {
 std::tuple<State, std::vector<Measurement>>
 State::generateStateAndMeasurements(const int state_size,
                                     const int n_closures) {
+  // Preliminary checks
+  if (n_closures > state_size) {
+    std::cerr << "ERROR: Impossible to have a number of closures higher than "
+                 "state size!"
+              << std::endl;
+    exit(0);
+  }
+
   // Initialize random number generator from 0 to 360 degrees
   std::random_device rd;
   std::mt19937 mt(rd());
@@ -85,19 +93,19 @@ State::generateStateAndMeasurements(const int state_size,
                         });
 
   // Generate the closures
+  std::vector<int> state_ids(state_size, 0);
+  std::iota(state_ids.begin(), state_ids.end(), 0);
+  std::shuffle(state_ids.begin(), state_ids.end(), mt);
   for (int clos_idx = 0; clos_idx < n_closures; ++clos_idx) {
-    const int from = closures_generator(mt);
-    int to = closures_generator(mt);
-    // Avoid self-measures
-    if (from == to) {
-      to = (from + 1) % state_size;
-    }
-    std::cout << from << " " << to << std::endl;
+    const int from = state_ids[clos_idx];
+    int to;
+    do {
+      to = closures_generator(mt);
+      // Avoid self-measures
+    } while (from == to);
     measurements.emplace_back(rotations[from].inverse() * rotations[to], from,
                               to);
   }
-
-  exit(0);
 
   // Return the state and measurements
   return {State(std::move(rotations)), measurements};

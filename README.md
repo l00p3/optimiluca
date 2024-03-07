@@ -11,6 +11,6 @@ Optimiluca: Optimization library by Luca
 make run
 ```
 ## TODO
- - Add a checker on the cli args
+ - Add a checker on the cli args (n_clouser never higher than n_states)
  - Generate closures (finish)
  - DogLeg solver
