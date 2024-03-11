@@ -57,7 +57,8 @@ std::ostream &operator<<(std::ostream &os, const State &state) {
 std::tuple<State, std::vector<Measurement>>
 State::generateStateAndMeasurements(const int state_size,
                                     const int n_closures) {
-  // Preliminary checks
+  // Preliminary checks // TODO: this is not true, a single state can observe
+  // more than one
   if (n_closures > state_size) {
     std::cerr << "ERROR: Impossible to have a number of closures higher than "
                  "state size!"
@@ -69,7 +70,7 @@ State::generateStateAndMeasurements(const int state_size,
   std::random_device rd;
   std::mt19937 mt(rd());
   std::uniform_real_distribution<double> angles_generator(0.0, 2 * pi);
-  std::uniform_int_distribution<int> closures_generator(0, state_size - 1);
+  std::uniform_int_distribution<int> ids_generator(0, state_size - 1);
 
   // Initialize vector of angles and measurements
   std::vector<Eigen::Rotation2Dd> rotations(state_size,
@@ -92,7 +93,8 @@ State::generateStateAndMeasurements(const int state_size,
                               R.inverse() * rotations[idx + 1], idx, idx + 1);
                         });
 
-  // Generate the closures
+  // Generate the closures // TODO: better id to id and write this with std lib
+  // func
   std::vector<int> state_ids(state_size, 0);
   std::iota(state_ids.begin(), state_ids.end(), 0);
   std::shuffle(state_ids.begin(), state_ids.end(), mt);
@@ -100,7 +102,7 @@ State::generateStateAndMeasurements(const int state_size,
     const int from = state_ids[clos_idx];
     int to;
     do {
-      to = closures_generator(mt);
+      to = ids_generator(mt);
       // Avoid self-measures
     } while (from == to);
     measurements.emplace_back(rotations[from].inverse() * rotations[to], from,

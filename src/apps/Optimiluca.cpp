@@ -28,15 +28,12 @@ int main(int argc, char **argv) {
   auto chi_stats = solver.solve(state, measurements, cli_args.termination_th,
                                 cli_args.max_iters, cli_args.verbose_level);
 
-  if (cli_args.verbose_level) {
+  if (cli_args.verbose_level == 2) {
+    std::cout << std::endl << "Ground truth: " << std::endl;
+    std::cout << State(ground_truth) << std::endl;
 
-    if (cli_args.verbose_level == 2) {
-      std::cout << std::endl << "Ground truth: " << std::endl;
-      std::cout << State(ground_truth) << std::endl;
-
-      std::cout << std::endl << "Optimized state: " << std::endl;
-      std::cout << state << std::endl;
-    }
+    std::cout << std::endl << "Optimized state: " << std::endl;
+    std::cout << state << std::endl;
   }
 
   std::cout << std::endl
