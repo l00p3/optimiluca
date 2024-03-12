@@ -11,29 +11,6 @@
 namespace {
 using namespace optilib;
 
-struct LinearSystemEntry {
-
-  LinearSystemEntry(const size_t size)
-      : H{Eigen::MatrixXd::Zero(size, size)}, b{Eigen::VectorXd::Zero(size)} {}
-
-  LinearSystemEntry &operator+=(const LinearSystemEntry &rhs) {
-    H += rhs.H;
-    b += rhs.b;
-    current_chi += rhs.current_chi;
-    return *this;
-  }
-
-  friend LinearSystemEntry operator+(LinearSystemEntry lhs,
-                                     const LinearSystemEntry &rhs) {
-    lhs += rhs;
-    return lhs;
-  }
-
-  Eigen::MatrixXd H;
-  Eigen::VectorXd b;
-  double current_chi = 0.0;
-};
-
 std::tuple<Eigen::Vector4d, Eigen::VectorXd, Eigen::VectorXd>
 computeErrorAndJacobian(const State &state, const Measurement &meas) {
 
@@ -52,28 +29,39 @@ computeErrorAndJacobian(const State &state, const Measurement &meas) {
   return {error, J_from, J_to};
 }
 
-LinearSystemEntry
+std::tuple<Eigen::SparseMatrix<double>, Eigen::VectorXd, double>
 buildLinearSystem(const optilib::State &state,
-                  const std::vector<optilib::Measurement> &measurements) {
+                  const std::vector<Measurement> &measurements) {
+  // Initialization
   const size_t state_size = state.size();
-  return std::transform_reduce(
-      measurements.cbegin(), measurements.cend(), LinearSystemEntry(state_size),
-      std::plus<>(), [&](const optilib::Measurement &meas) {
+  std::vector<Eigen::Triplet<double>> H_triplets;
+  Eigen::SparseMatrix<double> H(state_size, state_size);
+  Eigen::VectorXd b(state_size);
+  double current_chi = 0.0;
+
+  // Fill the linear system
+  H_triplets.reserve(measurements.size() * 4);
+  std::ranges::for_each(
+      measurements.cbegin(), measurements.cend(), [&](const Measurement &meas) {
         // Compute the error and jacobian
         auto [e, J_from, J_to] = computeErrorAndJacobian(state, meas);
 
-        // Create the entry of the linear system
-        LinearSystemEntry entry(state_size);
-        entry.H(meas.from, meas.from) = J_from.transpose() * J_from;
-        entry.H(meas.from, meas.to) = J_from.transpose() * J_to;
-        entry.H(meas.to, meas.from) = J_to.transpose() * J_from;
-        entry.H(meas.to, meas.to) = J_to.transpose() * J_to;
-        entry.b(meas.from) = J_from.transpose() * e;
-        entry.b(meas.to) = J_to.transpose() * e;
-        entry.current_chi = e.squaredNorm();
+        // Create the entrires of the linear system
+        H_triplets.emplace_back(meas.from, meas.from,
+                                J_from.transpose() * J_from);
+        H_triplets.emplace_back(meas.from, meas.to, J_from.transpose() * J_to);
+        H_triplets.emplace_back(meas.to, meas.from, J_to.transpose() * J_from);
+        H_triplets.emplace_back(meas.to, meas.to, J_to.transpose() * J_to);
 
-        return entry;
+        b(meas.from) = J_from.transpose() * e;
+        b(meas.to) = J_to.transpose() * e;
+        current_chi = e.squaredNorm();
       });
+
+  // Create the sparse matrix
+  H.setFromTriplets(H_triplets.begin(), H_triplets.end());
+
+  return {H, b, current_chi};
 }
 } // namespace
 
@@ -101,24 +89,24 @@ std::vector<double> Solver::solve(State &state,
   for (int iter = 0; iter < n_iters; ++iter) {
 
     // Compute the entry of the linear system for each measurement
-    const auto &[H, b, chi_square] = buildLinearSystem(state, measurements);
+    const auto [H, b, current_chi] = buildLinearSystem(state, measurements);
 
     // Update the stats
-    chi_stats.emplace_back(chi_square);
+    chi_stats.emplace_back(current_chi);
 
     // Compute the update
     // We fix the first state to avoid an underconstrained problem
     Eigen::VectorXd dx = Eigen::VectorXd::Zero(state_size);
-    dx.tail(state_size - 1) = H.block(1, 1, state_size - 1, state_size - 1)
-                                  .ldlt()
-                                  .solve(-b.tail(state_size - 1));
+    Eigen::SimplicialCholesky<Eigen::SparseMatrix<double>> chol_H(
+        H.block(1, 1, state_size - 1, state_size - 1));
+    dx.tail(state_size - 1) = chol_H.solve(-b.tail(state_size - 1));
 
     // Update the state
     state.boxPlus(dx);
 
     // VERBOSE
     if (verbose_level) {
-      std::cout << "\t ITER: " << iter + 0 << ", CHI SQUARE: " << chi_square
+      std::cout << "\t ITER: " << iter + 0 << ", CHI SQUARE: " << current_chi
                 << std::endl;
       if (verbose_level == 2) {
         std::cout << "\t\t State: " << state << std::endl;
