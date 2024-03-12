@@ -11,6 +11,30 @@
 namespace {
 using namespace optilib;
 
+struct LinearSystemEntry {
+
+  LinearSystemEntry(const size_t size)
+      : H{Eigen::SparseMatrix<double>(size, size)},
+        b{Eigen::VectorXd::Zero(size)} {}
+
+  LinearSystemEntry &operator+=(const LinearSystemEntry &rhs) {
+    H += rhs.H;
+    b += rhs.b;
+    current_chi += rhs.current_chi;
+    return *this;
+  }
+
+  friend LinearSystemEntry operator+(LinearSystemEntry lhs,
+                                     const LinearSystemEntry &rhs) {
+    lhs += rhs;
+    return lhs;
+  }
+
+  Eigen::SparseMatrix<double> H;
+  Eigen::VectorXd b;
+  double current_chi = 0.0;
+};
+
 std::tuple<Eigen::Vector4d, Eigen::VectorXd, Eigen::VectorXd>
 computeErrorAndJacobian(const State &state, const Measurement &meas) {
 
@@ -29,39 +53,38 @@ computeErrorAndJacobian(const State &state, const Measurement &meas) {
   return {error, J_from, J_to};
 }
 
-std::tuple<Eigen::SparseMatrix<double>, Eigen::VectorXd, double>
+LinearSystemEntry
 buildLinearSystem(const optilib::State &state,
                   const std::vector<Measurement> &measurements) {
   // Initialization
   const size_t state_size = state.size();
-  std::vector<Eigen::Triplet<double>> H_triplets;
-  Eigen::SparseMatrix<double> H(state_size, state_size);
-  Eigen::VectorXd b(state_size);
-  double current_chi = 0.0;
 
   // Fill the linear system
-  H_triplets.reserve(measurements.size() * 4);
-  std::ranges::for_each(
-      measurements.cbegin(), measurements.cend(), [&](const Measurement &meas) {
+  return std::transform_reduce(
+      measurements.cbegin(), measurements.cend(), LinearSystemEntry(state_size),
+      std::plus<>(), [&](const Measurement &meas) {
         // Compute the error and jacobian
         auto [e, J_from, J_to] = computeErrorAndJacobian(state, meas);
 
-        // Create the entrires of the linear system
-        H_triplets.emplace_back(meas.from, meas.from,
-                                J_from.transpose() * J_from);
-        H_triplets.emplace_back(meas.from, meas.to, J_from.transpose() * J_to);
-        H_triplets.emplace_back(meas.to, meas.from, J_to.transpose() * J_from);
-        H_triplets.emplace_back(meas.to, meas.to, J_to.transpose() * J_to);
+        // Initialize the linear system entry
+        LinearSystemEntry linear_system_entry(state_size);
 
-        b(meas.from) = J_from.transpose() * e;
-        b(meas.to) = J_to.transpose() * e;
-        current_chi = e.squaredNorm();
+        // Fill the non-zero entries
+        std::vector<Eigen::Triplet<double>> H_triplets(4);
+
+        H_triplets[0] = {meas.from, meas.from, J_from.transpose() * J_from};
+        H_triplets[1] = {meas.from, meas.to, J_from.transpose() * J_to};
+        H_triplets[2] = {meas.to, meas.from, J_to.transpose() * J_from};
+        H_triplets[3] = {meas.to, meas.to, J_to.transpose() * J_to};
+        linear_system_entry.H.setFromTriplets(H_triplets.begin(),
+                                              H_triplets.end());
+
+        linear_system_entry.b(meas.from) = J_from.transpose() * e;
+        linear_system_entry.b(meas.to) = J_to.transpose() * e;
+        linear_system_entry.current_chi = e.squaredNorm();
+
+        return linear_system_entry;
       });
-
-  // Create the sparse matrix
-  H.setFromTriplets(H_triplets.begin(), H_triplets.end());
-
-  return {H, b, current_chi};
 }
 } // namespace
 
