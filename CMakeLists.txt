@@ -7,6 +7,7 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 
 # Dependencies
 find_package(Eigen3 REQUIRED)
+find_package(TBB REQUIRED)
 
 # Subdirs
 add_subdirectory(src)

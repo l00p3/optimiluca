@@ -1,5 +1,6 @@
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Sparse>
+#include <execution>
 #include <iostream>
 #include <numeric>
 
@@ -61,8 +62,9 @@ buildLinearSystem(const optilib::State &state,
 
   // Fill the linear system
   return std::transform_reduce(
-      measurements.cbegin(), measurements.cend(), LinearSystemEntry(state_size),
-      std::plus<>(), [&](const Measurement &meas) {
+      std::execution::par, measurements.cbegin(), measurements.cend(),
+      LinearSystemEntry(state_size), std::plus<>(),
+      [&](const Measurement &meas) {
         // Compute the error and jacobian
         auto [e, J_from, J_to] = computeErrorAndJacobian(state, meas);
 
@@ -117,8 +119,7 @@ std::vector<double> Solver::solve(State &state,
     // Update the stats
     chi_stats.emplace_back(current_chi);
 
-    // Compute the update
-    // We fix the first state to avoid an underconstrained problem
+    // Compute the update: fixing the first state to origin
     Eigen::VectorXd dx = Eigen::VectorXd::Zero(state_size);
     Eigen::SimplicialCholesky<Eigen::SparseMatrix<double>> chol_H(
         H.block(1, 1, state_size - 1, state_size - 1));
