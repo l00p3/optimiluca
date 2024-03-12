@@ -57,8 +57,7 @@ std::ostream &operator<<(std::ostream &os, const State &state) {
 std::tuple<State, std::vector<Measurement>>
 State::generateStateAndMeasurements(const int state_size,
                                     const int n_closures) {
-  // Preliminary checks // TODO: this is not true, a single state can observe
-  // more than one
+  // Preliminary checks
   if (n_closures > state_size) {
     std::cerr << "ERROR: Impossible to have a number of closures higher than "
                  "state size!"
@@ -78,13 +77,13 @@ State::generateStateAndMeasurements(const int state_size,
   std::vector<Measurement> measurements;
   measurements.reserve((state_size - 1) + n_closures);
 
-  // Generate random rotations
+  // Generate random rotations: STATE
   std::ranges::for_each(
       rotations.begin() + 1, rotations.end(), [&](Eigen::Rotation2Dd &R) {
         R = std::move(Eigen::Rotation2Dd(angles_generator(mt)));
       });
 
-  // Generate pose to pose measurements
+  // Generate pose to pose MEASUREMENTS
   std::ranges::for_each(std::views::enumerate(rotations).cbegin(),
                         std::views::enumerate(rotations).cend() - 1,
                         [&](const auto &idx_R) {
@@ -93,21 +92,19 @@ State::generateStateAndMeasurements(const int state_size,
                               R.inverse() * rotations[idx + 1], idx, idx + 1);
                         });
 
-  // Generate the closures // TODO: better id to id and write this with std lib
-  // func
+  // Generate the CLOSURES
   std::vector<int> state_ids(state_size, 0);
   std::iota(state_ids.begin(), state_ids.end(), 0);
   std::shuffle(state_ids.begin(), state_ids.end(), mt);
-  for (int clos_idx = 0; clos_idx < n_closures; ++clos_idx) {
-    const int from = state_ids[clos_idx];
-    int to;
-    do {
+  std::ranges::for_each(state_ids, [&](const int from) {
+    int to = ids_generator(mt);
+    // Avoid self-measurements
+    while (from == to) {
       to = ids_generator(mt);
-      // Avoid self-measures
-    } while (from == to);
+    }
     measurements.emplace_back(rotations[from].inverse() * rotations[to], from,
                               to);
-  }
+  });
 
   // Return the state and measurements
   return {State(std::move(rotations)), measurements};
