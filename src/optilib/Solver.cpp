@@ -42,8 +42,6 @@ std::vector<double> Solver::solve(State &state,
   const size_t state_size = state.size();
   const size_t meas_size = measurements.size();
   std::vector<double> chi_stats;
-  std::vector<int> meas_indices(measurements.size());
-  std::ranges::iota(meas_indices, 0);
 
   // VERBOSE
   if (verbose_level) {
@@ -54,11 +52,10 @@ std::vector<double> Solver::solve(State &state,
     std::cout << std::endl << std::endl;
   }
 
-  // // TODO: here meas instead of meas_idx
   // Function to apply to each entry of the Hessian H
-  auto to_linear_system_entry = [&](const int meas_idx) {
+  auto to_linear_system_entry = [&](const Measurement &meas) {
     // Compute the error and jacobian
-    auto [e, J] = computeErrorAndJacobian(state, measurements[meas_idx]);
+    auto [e, J] = computeErrorAndJacobian(state, meas);
 
     // Create the entry of the linear system
     LinearSystemEntry entry(state_size);
@@ -75,7 +72,7 @@ std::vector<double> Solver::solve(State &state,
 
     // Compute the entry of the linear system for each measurement
     const auto &[H, b, chi_square] = std::transform_reduce(
-        meas_indices.cbegin(), meas_indices.cend(),
+        measurements.cbegin(), measurements.cend(),
         LinearSystemEntry(state_size), std::plus<>(), to_linear_system_entry);
 
     // Update the stats
