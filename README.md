@@ -5,6 +5,7 @@ Optimiluca: Optimization library by Luca
  - gcc >= 13.1.0
  - cmake >= 3.22.1
  - eigen >= 3.4.0
+ - libtbb >= 2021.5.0-7
 
 ## Usage
 ```bash
