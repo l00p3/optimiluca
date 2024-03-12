@@ -1,3 +1,5 @@
+#include <eigen3/Eigen/Dense>
+#include <eigen3/Eigen/Sparse>
 #include <iostream>
 #include <numeric>
 
@@ -7,6 +9,8 @@
 
 // Linear System Entry Struct
 namespace {
+using namespace optilib;
+
 struct LinearSystemEntry {
 
   LinearSystemEntry(const size_t size)
@@ -29,18 +33,58 @@ struct LinearSystemEntry {
   Eigen::VectorXd b;
   double current_chi = 0.0;
 };
+
+std::tuple<Eigen::Vector4d, Eigen::VectorXd, Eigen::VectorXd>
+computeErrorAndJacobian(const State &state, const Measurement &meas) {
+
+  // Compute the error
+  Eigen::Vector4d error =
+      flatten(state(meas.from).inverse() * state(meas.to)) - flatten(meas.z);
+
+  // Compute the Jacobian
+  Eigen::VectorXd J_from = Eigen::VectorXd::Zero(4);
+  Eigen::VectorXd J_to = Eigen::VectorXd::Zero(4);
+  J_from = flatten(rotationDerivative(state(meas.from)).transpose() *
+                   state(meas.to));
+  J_to =
+      flatten(state(meas.from).inverse() * rotationDerivative(state(meas.to)));
+
+  return {error, J_from, J_to};
+}
+
+LinearSystemEntry
+buildLinearSystem(const optilib::State &state,
+                  const std::vector<optilib::Measurement> &measurements) {
+  const size_t state_size = state.size();
+  return std::transform_reduce(
+      measurements.cbegin(), measurements.cend(), LinearSystemEntry(state_size),
+      std::plus<>(), [&](const optilib::Measurement &meas) {
+        // Compute the error and jacobian
+        auto [e, J_from, J_to] = computeErrorAndJacobian(state, meas);
+
+        // Create the entry of the linear system
+        LinearSystemEntry entry(state_size);
+        entry.H(meas.from, meas.from) = J_from.transpose() * J_from;
+        entry.H(meas.from, meas.to) = J_from.transpose() * J_to;
+        entry.H(meas.to, meas.from) = J_to.transpose() * J_from;
+        entry.H(meas.to, meas.to) = J_to.transpose() * J_to;
+        entry.b(meas.from) = J_from.transpose() * e;
+        entry.b(meas.to) = J_to.transpose() * e;
+        entry.current_chi = e.squaredNorm();
+
+        return entry;
+      });
+}
 } // namespace
 
 namespace optilib {
 
 std::vector<double> Solver::solve(State &state,
                                   const std::vector<Measurement> &measurements,
-                                  const double termination_th,
                                   const int n_iters, const int verbose_level) {
 
   // Initialization
   const size_t state_size = state.size();
-  const size_t meas_size = measurements.size();
   std::vector<double> chi_stats;
 
   // VERBOSE
@@ -52,28 +96,12 @@ std::vector<double> Solver::solve(State &state,
     std::cout << std::endl << std::endl;
   }
 
-  // Function to apply to each entry of the Hessian H
-  auto to_linear_system_entry = [&](const Measurement &meas) {
-    // Compute the error and jacobian
-    auto [e, J] = computeErrorAndJacobian(state, meas);
-
-    // Create the entry of the linear system
-    LinearSystemEntry entry(state_size);
-    entry.H = J.transpose() * J;
-    entry.b = J.transpose() * e;
-    entry.current_chi = e.squaredNorm();
-
-    return entry;
-  };
-
-  // For each iterations:
+  // For each iterations
   chi_stats.reserve(n_iters);
   for (int iter = 0; iter < n_iters; ++iter) {
 
     // Compute the entry of the linear system for each measurement
-    const auto &[H, b, chi_square] = std::transform_reduce(
-        measurements.cbegin(), measurements.cend(),
-        LinearSystemEntry(state_size), std::plus<>(), to_linear_system_entry);
+    const auto &[H, b, chi_square] = buildLinearSystem(state, measurements);
 
     // Update the stats
     chi_stats.emplace_back(chi_square);
@@ -97,13 +125,13 @@ std::vector<double> Solver::solve(State &state,
       }
     }
 
-    // Termination
-    if (chi_square < termination_th || dx.norm() < 1e-10) {
+    // Termination criteria
+    if (dx.norm() < 1e-10)
       break;
-    }
   }
   chi_stats.shrink_to_fit();
 
+  // VERBOSE
   if (verbose_level) {
     std::cout << std::endl
               << "\t TERMINATED WITH CHI SQUARE: " << chi_stats.back()
@@ -115,26 +143,5 @@ std::vector<double> Solver::solve(State &state,
 };
 
 // --- UTILITY FUNCTIONS ---
-std::tuple<Eigen::Vector4d, Eigen::MatrixXd>
-Solver::computeErrorAndJacobian(const State &state,
-                                const Measurement &meas) const {
-
-  // Initialization
-  const int &from_idx = meas.from;
-  const int &to_idx = meas.to;
-
-  // Compute the error
-  Eigen::Vector4d error =
-      flatten(state(from_idx).inverse() * state(to_idx)) - flatten(meas.z);
-
-  // Compute the Jacobian
-  Eigen::MatrixXd J = Eigen::MatrixXd::Zero(4, state.size());
-  J.col(from_idx) =
-      flatten(rotationDerivative(state(from_idx)).transpose() * state(to_idx));
-  J.col(to_idx) =
-      flatten(state(from_idx).inverse() * rotationDerivative(state(to_idx)));
-
-  return {error, J};
-}
 
 } // namespace optilib

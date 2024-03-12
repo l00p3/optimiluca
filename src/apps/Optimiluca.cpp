@@ -25,8 +25,8 @@ int main(int argc, char **argv) {
   State state(cli_args.state_size);
 
   // Optimize
-  auto chi_stats = solver.solve(state, measurements, cli_args.termination_th,
-                                cli_args.max_iters, cli_args.verbose_level);
+  auto chi_stats = solver.solve(state, measurements, cli_args.max_iters,
+                                cli_args.verbose_level);
 
   if (cli_args.verbose_level == 2) {
     std::cout << std::endl << "Ground truth: " << std::endl;

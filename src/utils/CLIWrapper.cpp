@@ -9,8 +9,6 @@ int CommandLineArguments::Initialize(int argc, char **argv) {
                      "Number of rotations to consider.");
   cli_app.add_option("-c, --n-closures", n_closures,
                      "# closures in the measurements.");
-  cli_app.add_option("-t, --termination-th", termination_th,
-                     "Error threshold for termination.");
   cli_app.add_option("-i, --max-iters", max_iters,
                      "Max numbers of iterations for the solver.");
   cli_app.add_option("-v, --verbose_level", verbose_level,
