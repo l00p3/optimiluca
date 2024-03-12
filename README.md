@@ -11,5 +11,4 @@ Optimiluca: Optimization library by Luca
 make run
 ```
 ## TODO
- - Generate closures (finish)
  - DogLeg solver
