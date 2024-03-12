@@ -22,6 +22,7 @@ int main(int argc, char **argv) {
       cli_args.state_size, cli_args.n_closures);
 
   // Define the initial guess at 0
+  // TODO: Create 2 solvers children: GS and DogLeg
   State state(cli_args.state_size);
 
   // Optimize

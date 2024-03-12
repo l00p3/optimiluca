@@ -1,3 +1,4 @@
+#include <chrono>
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Sparse>
 #include <execution>
@@ -99,6 +100,8 @@ std::vector<double> Solver::solve(State &state,
   // Initialization
   const size_t state_size = state.size();
   std::vector<double> chi_stats;
+  std::vector<double> execution_times;
+  std::chrono::time_point<std::chrono::high_resolution_clock> t1, t2;
 
   // VERBOSE
   if (verbose_level) {
@@ -111,19 +114,23 @@ std::vector<double> Solver::solve(State &state,
 
   // For each iterations
   chi_stats.reserve(n_iters);
+  execution_times.reserve(n_iters);
   for (int iter = 0; iter < n_iters; ++iter) {
+    t1 = std::chrono::high_resolution_clock::now();
 
     // Compute the entry of the linear system for each measurement
     const auto [H, b, current_chi] = buildLinearSystem(state, measurements);
-
-    // Update the stats
-    chi_stats.emplace_back(current_chi);
 
     // Compute the update: fixing the first state to origin
     Eigen::VectorXd dx = Eigen::VectorXd::Zero(state_size);
     Eigen::SimplicialCholesky<Eigen::SparseMatrix<double>> chol_H(
         H.block(1, 1, state_size - 1, state_size - 1));
     dx.tail(state_size - 1) = chol_H.solve(-b.tail(state_size - 1));
+
+    // Update the stats
+    t2 = std::chrono::high_resolution_clock::now();
+    execution_times.emplace_back((t2 - t1).count());
+    chi_stats.emplace_back(current_chi);
 
     // Update the state
     state.boxPlus(dx);
@@ -142,12 +149,20 @@ std::vector<double> Solver::solve(State &state,
       break;
   }
   chi_stats.shrink_to_fit();
+  execution_times.shrink_to_fit();
 
   // VERBOSE
   if (verbose_level) {
+    const double avg_execution_time =
+        (std::accumulate(execution_times.begin(), execution_times.end(), 0.0) /
+         execution_times.size()) *
+        1e-9;
     std::cout << std::endl
               << "\t TERMINATED WITH CHI SQUARE: " << chi_stats.back()
-              << std::endl;
+              << " (iter. avg. time: " << avg_execution_time << "sec)"
+              << std::endl
+              << std::setprecision(3);
+    ;
   }
 
   // Done
