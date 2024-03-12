@@ -18,5 +18,33 @@ int CommandLineArguments::Initialize(int argc, char **argv) {
 
   CLI11_PARSE(cli_app, argc, argv);
 
+  // Check that the given arguments are correct
+  check_args();
+
   return 0;
+}
+
+void CommandLineArguments::check_args() {
+  // state_size
+  if (state_size < 1) {
+    std::cerr << "OPTIMIERROR: number of states should be at least 1!"
+              << std::endl;
+    exit(1);
+  }
+
+  // n_closures
+  if (n_closures > state_size) {
+    std::cerr
+        << "OPTIMIERROR: Impossible to have a number of closures higher than "
+           "state size!"
+        << std::endl;
+    exit(1);
+  }
+
+  // max_iters
+  if (max_iters < 1) {
+    std::cerr << "OPTIMIERROR: number of max iterations should be at least 1!"
+              << std::endl;
+    exit(1);
+  }
 }

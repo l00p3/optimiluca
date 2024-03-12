@@ -57,14 +57,6 @@ std::ostream &operator<<(std::ostream &os, const State &state) {
 std::tuple<State, std::vector<Measurement>>
 State::generateStateAndMeasurements(const int state_size,
                                     const int n_closures) {
-  // Preliminary checks
-  if (n_closures > state_size) {
-    std::cerr << "ERROR: Impossible to have a number of closures higher than "
-                 "state size!"
-              << std::endl;
-    exit(0);
-  }
-
   // Initialize random number generator from 0 to 360 degrees
   std::random_device rd;
   std::mt19937 mt(rd());
