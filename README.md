@@ -13,7 +13,7 @@ make run
 ```
 
 ## Statistics
- - Current Average Iteration Execution Time: 0.027 sec
+ - Current Average Iteration Execution Time (1000 states, 500 closures): 0.027 sec
 
 ## TODO
  - DogLeg solver
