@@ -82,6 +82,8 @@ std::vector<double> Solver::solve(State &state,
   std::vector<double> chi_stats;
   std::vector<double> execution_times;
   std::chrono::time_point<std::chrono::high_resolution_clock> t1, t2;
+  Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> sparse_solver;
+  Eigen::VectorXd dx = Eigen::VectorXd::Zero(state_size);
 
   // VERBOSE
   if (verbose_level) {
@@ -102,10 +104,10 @@ std::vector<double> Solver::solve(State &state,
     const auto [H, b, current_chi] = buildLinearSystem(state, measurements);
 
     // Compute the update: fixing the first state to origin
-    Eigen::VectorXd dx = Eigen::VectorXd::Zero(state_size);
-    Eigen::SimplicialCholesky<Eigen::SparseMatrix<double>> chol_H(
-        H.block(1, 1, state_size - 1, state_size - 1));
-    dx.tail(state_size - 1) = chol_H.solve(-b.tail(state_size - 1));
+    if (iter == 0) {
+      sparse_solver.compute(H.block(1, 1, state_size - 1, state_size - 1));
+    }
+    dx.tail(state_size - 1) = sparse_solver.solve(-b.tail(state_size - 1));
 
     // Update the stats
     t2 = std::chrono::high_resolution_clock::now();
