@@ -1,7 +1,6 @@
 #include <chrono>
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Sparse>
-#include <execution>
 #include <iostream>
 #include <numeric>
 #include <ranges>
