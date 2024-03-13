@@ -13,8 +13,7 @@ int main(int argc, char **argv) {
   cli_args.Initialize(argc, argv);
 
   // Initialization
-  // TODO: Create 2 solvers children: GS and DogLeg
-  Solver solver;
+  DLSolver solver;
 
   // Generate the ground truth and the measurements
   auto [ground_truth, measurements] = State::generateStateAndMeasurements(

@@ -73,9 +73,9 @@ LinearSystem buildLinearSystem(const optilib::State &state,
 
 namespace optilib {
 
-std::vector<double> Solver::solve(State &state,
-                                  const std::vector<Measurement> &measurements,
-                                  const int n_iters, const int verbose_level) {
+std::vector<double>
+GSSolver::solve(State &state, const std::vector<Measurement> &measurements,
+                const int n_iters, const int verbose_level) {
 
   // Initialization
   const size_t state_size = state.size();
@@ -151,6 +151,11 @@ std::vector<double> Solver::solve(State &state,
   return chi_stats;
 };
 
-// --- UTILITY FUNCTIONS ---
+std::vector<double>
+DLSolver::solve(State &state, const std::vector<Measurement> &measurements,
+                const int n_iters, const int verbose_level) {
+  std::cout << "Attaccati al cazzo" << std::endl;
+  return {0.0};
+}
 
 } // namespace optilib
