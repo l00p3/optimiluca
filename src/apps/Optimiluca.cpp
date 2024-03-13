@@ -1,6 +1,4 @@
 #include <iostream>
-#include <numeric>
-#include <vector>
 
 #include <CLIWrapper.hpp>
 #include <Solver.hpp>
@@ -15,6 +13,7 @@ int main(int argc, char **argv) {
   cli_args.Initialize(argc, argv);
 
   // Initialization
+  // TODO: Create 2 solvers children: GS and DogLeg
   Solver solver;
 
   // Generate the ground truth and the measurements
@@ -22,7 +21,6 @@ int main(int argc, char **argv) {
       cli_args.state_size, cli_args.n_closures);
 
   // Define the initial guess at 0
-  // TODO: Create 2 solvers children: GS and DogLeg
   State state(cli_args.state_size);
 
   // Optimize

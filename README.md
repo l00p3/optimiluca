@@ -11,5 +11,9 @@ Optimiluca: Optimization library by Luca
 ```bash
 make run
 ```
+
+## Statistics
+ - Current Average Iteration Execution Time: 0.058 sec
+
 ## TODO
  - DogLeg solver

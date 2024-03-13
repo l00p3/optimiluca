@@ -4,6 +4,7 @@
 #include <execution>
 #include <iostream>
 #include <numeric>
+#include <ranges>
 
 #include "Lumath.hpp"
 #include "Solver.hpp"
@@ -13,29 +14,8 @@
 namespace {
 using namespace optilib;
 
-struct LinearSystemEntry {
-
-  LinearSystemEntry(const size_t size)
-      : H{Eigen::SparseMatrix<double>(size, size)},
-        b{Eigen::VectorXd::Zero(size)} {}
-
-  LinearSystemEntry &operator+=(const LinearSystemEntry &rhs) {
-    H += rhs.H;
-    b += rhs.b;
-    current_chi += rhs.current_chi;
-    return *this;
-  }
-
-  friend LinearSystemEntry operator+(LinearSystemEntry lhs,
-                                     const LinearSystemEntry &rhs) {
-    lhs += rhs;
-    return lhs;
-  }
-
-  Eigen::SparseMatrix<double> H;
-  Eigen::VectorXd b;
-  double current_chi = 0.0;
-};
+using LinearSystem =
+    std::tuple<Eigen::SparseMatrix<double>, Eigen::VectorXd, double>;
 
 std::tuple<Eigen::Vector4d, Eigen::VectorXd, Eigen::VectorXd>
 computeErrorAndJacobian(const State &state, const Measurement &meas) {
@@ -55,39 +35,40 @@ computeErrorAndJacobian(const State &state, const Measurement &meas) {
   return {error, J_from, J_to};
 }
 
-LinearSystemEntry
-buildLinearSystem(const optilib::State &state,
-                  const std::vector<Measurement> &measurements) {
+LinearSystem buildLinearSystem(const optilib::State &state,
+                               const std::vector<Measurement> &measurements) {
   // Initialization
   const size_t state_size = state.size();
+  std::vector<Eigen::Triplet<double>> H_triplets;
+  Eigen::SparseMatrix<double> H(state_size, state_size);
+  Eigen::VectorXd b = Eigen::VectorXd::Zero(state_size);
+  double chi_square = 0.0;
 
   // Fill the linear system
-  return std::transform_reduce(
-      std::execution::par, measurements.cbegin(), measurements.cend(),
-      LinearSystemEntry(state_size), std::plus<>(),
-      [&](const Measurement &meas) {
+  H_triplets.reserve(measurements.size() * 4);
+  std::for_each(
+      measurements.cbegin(), measurements.cend(), [&](const Measurement &meas) {
         // Compute the error and jacobian
         auto [e, J_from, J_to] = computeErrorAndJacobian(state, meas);
 
-        // Initialize the linear system entry
-        LinearSystemEntry linear_system_entry(state_size);
+        // Fill Heassian
+        H_triplets.emplace_back(meas.from, meas.from,
+                                J_from.transpose() * J_from);
+        H_triplets.emplace_back(meas.from, meas.to, J_from.transpose() * J_to);
+        H_triplets.emplace_back(meas.to, meas.from, J_to.transpose() * J_from);
+        H_triplets.emplace_back(meas.to, meas.to, J_to.transpose() * J_to);
 
-        // Fill the non-zero entries
-        std::vector<Eigen::Triplet<double>> H_triplets(4);
+        // Fill b
+        b(meas.from) += J_from.transpose() * e;
+        b(meas.to) += J_to.transpose() * e;
 
-        H_triplets[0] = {meas.from, meas.from, J_from.transpose() * J_from};
-        H_triplets[1] = {meas.from, meas.to, J_from.transpose() * J_to};
-        H_triplets[2] = {meas.to, meas.from, J_to.transpose() * J_from};
-        H_triplets[3] = {meas.to, meas.to, J_to.transpose() * J_to};
-        linear_system_entry.H.setFromTriplets(H_triplets.begin(),
-                                              H_triplets.end());
-
-        linear_system_entry.b(meas.from) = J_from.transpose() * e;
-        linear_system_entry.b(meas.to) = J_to.transpose() * e;
-        linear_system_entry.current_chi = e.squaredNorm();
-
-        return linear_system_entry;
+        // Compute error
+        chi_square += e.squaredNorm();
       });
+
+  H.setFromTriplets(H_triplets.begin(), H_triplets.end());
+
+  return {H, b, chi_square};
 }
 } // namespace
 
