@@ -1,4 +1,5 @@
 #include <chrono>
+#include <cmath>
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Sparse>
 #include <iostream>
@@ -154,7 +155,99 @@ GSSolver::solve(State &state, const std::vector<Measurement> &measurements,
 std::vector<double>
 DLSolver::solve(State &state, const std::vector<Measurement> &measurements,
                 const int n_iters, const int verbose_level) {
-  std::cout << "Attaccati al cazzo" << std::endl;
+  // Initialization
+  const size_t state_size = state.size();
+  Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> sparse_solver;
+  Eigen::VectorXd dx_gn = Eigen::VectorXd::Zero(state_size);
+  Eigen::VectorXd dx_sd = Eigen::VectorXd::Zero(state_size);
+  double linear_decrease;
+
+  // For each iteration
+  for (int iter = 0; iter < n_iters; ++iter) {
+
+    // Compute Hessian and gradient
+    const auto [H, b, current_chi] = buildLinearSystem(state, measurements);
+    const double b_norm = b.norm();
+
+    // Compute Gauss-Newton Direction
+    if (iter == 0) {
+      sparse_solver.compute(H.block(1, 1, state_size - 1, state_size - 1));
+    }
+    dx_gn.tail(state_size - 1) = sparse_solver.solve(-b.tail(state_size - 1));
+
+    // Comput the Cauchy point
+    const double alpha = (b.tail(state_size - 1).norm() /
+                          (b.tail(state_size - 1).transpose() *
+                           H.block(1, 1, state_size - 1, state_size - 1) *
+                           b.tail(state_size - 1)));
+    dx_sd.tail(state_size - 1) = alpha * b.tail(state_size - 1);
+    double dx_sd_norm = dx_sd.norm();
+
+    // Check if it is inside the trust region, if yes accept it
+    if (dx_gn.norm() <= this->_trust_region_radius) {
+      // Take dx_gn as solution
+      this->_dx = dx_gn;
+      this->_dx_norm = this->_dx.norm();
+      std::cout << "GN dx" << std::endl;
+
+      // Compute the linear decrease
+      linear_decrease = 0.5 * current_chi;
+
+      // Check if it is outside the trust region, if yes take the rescaled
+    } else if (dx_sd_norm >= this->_trust_region_radius) {
+      // Take the intersection of the "leg" to dx_sd with the trust region
+      this->_dx = this->_trust_region_radius * dx_sd / dx_sd_norm;
+      this->_dx_norm = this->_dx.norm();
+      std::cout << "SD dx" << std::endl;
+
+      // Compute the linear decrease
+      linear_decrease = this->_trust_region_radius *
+                        (2 * dx_sd_norm - this->_trust_region_radius) /
+                        (2 * alpha);
+
+    } else {
+      // Precomputation
+      const double c = dx_sd.transpose() * (dx_gn - dx_sd);
+      const double radius_minus_dx_sd =
+          this->_trust_region_radius * this->_trust_region_radius -
+          dx_sd_norm * dx_sd_norm;
+      const double norm_difference = (dx_gn - dx_sd).norm();
+      const double squared_norm_difference = norm_difference * norm_difference;
+      const double squared_term =
+          std::sqrt(c * c + squared_norm_difference * radius_minus_dx_sd);
+
+      const double beta = (c <= 0)
+                              ? radius_minus_dx_sd / (c + squared_term)
+                              : (-c + squared_term) / squared_norm_difference;
+
+      // Take the intersection of the "leg" between dx_gn and dx_sd
+      this->_dx = dx_sd + beta * (dx_gn - dx_sd);
+      this->_dx_norm = this->_dx.norm();
+      std::cout << "GN/SD dx" << std::endl;
+
+      // Compute the linear decrease
+      linear_decrease =
+          0.5 * alpha * (1 - beta) * (1 - beta) * b_norm * b_norm +
+          beta * (2 - beta) * current_chi;
+    }
+
+    // Compute the
+
+    // Check goodness of the step
+    /* if (this->_dx_norm <= th) { */
+    // TODO: apply perturbation
+    /* } else { */
+    // Do all the rest
+    /* } */
+
+    // Rescale the trust region radius
+
+    // TODO: the rest of this code is just for test
+    state.boxPlus(this->_dx);
+    if (this->_dx.norm() < 1e-10)
+      break;
+  }
+
   return {0.0};
 }
 

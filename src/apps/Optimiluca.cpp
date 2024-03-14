@@ -13,7 +13,7 @@ int main(int argc, char **argv) {
   cli_args.Initialize(argc, argv);
 
   // Initialization
-  DLSolver solver;
+  GSSolver solver;
 
   // Generate the ground truth and the measurements
   auto [ground_truth, measurements] = State::generateStateAndMeasurements(
