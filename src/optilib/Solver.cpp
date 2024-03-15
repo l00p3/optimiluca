@@ -45,7 +45,7 @@ LinearSystem buildLinearSystem(const optilib::State &state,
   double chi_square = 0.0;
 
   // Fill the linear system
-  H_triplets.reserve(measurements.size() * 4);
+  H_triplets.reserve((measurements.size() * 4) + 1);
   std::for_each(
       measurements.cbegin(), measurements.cend(), [&](const Measurement &meas) {
         // Compute the error and jacobian
@@ -66,6 +66,11 @@ LinearSystem buildLinearSystem(const optilib::State &state,
         chi_square += e.squaredNorm();
       });
 
+  // Fix the first state by assigning a very high certainty and b(0) = 0
+  H_triplets.emplace_back(0, 0, 1e20);
+  b(0) = 0.0;
+
+  // Build the sparse system
   H.setFromTriplets(H_triplets.begin(), H_triplets.end());
 
   return {H, b, chi_square};
@@ -106,9 +111,9 @@ GSSolver::solve(State &state, const std::vector<Measurement> &measurements,
 
     // Compute the update: fixing the first state to origin
     if (iter == 0) {
-      sparse_solver.compute(H.block(1, 1, state_size - 1, state_size - 1));
+      sparse_solver.compute(H);
     }
-    dx.tail(state_size - 1) = sparse_solver.solve(-b.tail(state_size - 1));
+    dx = sparse_solver.solve(-b);
 
     // Update the stats
     t2 = std::chrono::high_resolution_clock::now();
@@ -171,16 +176,13 @@ DLSolver::solve(State &state, const std::vector<Measurement> &measurements,
 
     // Compute Gauss-Newton Direction
     if (iter == 0) {
-      sparse_solver.compute(H.block(1, 1, state_size - 1, state_size - 1));
+      sparse_solver.compute(H);
     }
-    dx_gn.tail(state_size - 1) = sparse_solver.solve(-b.tail(state_size - 1));
+    dx_gn = sparse_solver.solve(-b);
 
     // Comput the Cauchy point
-    const double alpha = (b.tail(state_size - 1).norm() /
-                          (b.tail(state_size - 1).transpose() *
-                           H.block(1, 1, state_size - 1, state_size - 1) *
-                           b.tail(state_size - 1)));
-    dx_sd.tail(state_size - 1) = alpha * b.tail(state_size - 1);
+    const double alpha = (b.norm() / (b.transpose() * H * b));
+    dx_sd = alpha * b;
     double dx_sd_norm = dx_sd.norm();
 
     // Check if it is inside the trust region, if yes accept it
