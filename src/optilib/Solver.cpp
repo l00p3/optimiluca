@@ -233,7 +233,13 @@ DLSolver::solve(State &state, const std::vector<Measurement> &measurements,
           beta * (2 - beta) * current_chi;
     }
 
-    // Compute the
+    // Compute the update
+
+    // TODO:
+    // 1. You should find a way to have an updated version of the current state,
+    // that you can discard if the update is not good enough
+    // 2. You should comute H, b and chi_square and reuse it in the next
+    // itaration
 
     // Check goodness of the step
     /* if (this->_dx_norm <= th) { */
@@ -242,12 +248,15 @@ DLSolver::solve(State &state, const std::vector<Measurement> &measurements,
     // Do all the rest
     /* } */
 
-    // Rescale the trust region radius
-
-    // TODO: the rest of this code is just for test
+    // Apply the update
     state.boxPlus(this->_dx);
-    if (this->_dx.norm() < 1e-10)
-      break;
+
+    // Compute the ratio for update
+    const double ratio =
+        (0.5 * current_chi - 0.5 * update_chi) / linear_decrease;
+
+    // Rescale the trust region radius
+    // TODO
   }
 
   return {0.0};
