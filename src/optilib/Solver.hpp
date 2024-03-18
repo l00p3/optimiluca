@@ -4,15 +4,7 @@
 
 namespace optilib {
 
-class Solver {
-
-public:
-  virtual std::vector<double>
-  solve(State &state, const std::vector<Measurement> &measurements,
-        const int n_iters, const int verbose_level) = 0;
-};
-
-class GSSolver : public Solver {
+class GNSolver {
 public:
   std::vector<double> solve(State &state,
                             const std::vector<Measurement> &measurements,
@@ -20,7 +12,7 @@ public:
                             const int verbose_level = 1);
 };
 
-class DLSolver : public Solver {
+class DLSolver {
 public:
   DLSolver(const double &trust_region_radius = 0.01)
       : _trust_region_radius(trust_region_radius){};

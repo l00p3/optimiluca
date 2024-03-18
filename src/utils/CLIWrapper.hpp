@@ -1,5 +1,7 @@
 #pragma once
 
+namespace optilib {
+
 struct CommandLineArguments {
 
   int Initialize(int argc, char **argv);
@@ -9,5 +11,7 @@ struct CommandLineArguments {
   int state_size = 8;
   int n_closures = 1;
   int max_iters = 100;
-  int verbose_level = 1;
+  bool verbose = true;
 };
+
+} // namespace optilib

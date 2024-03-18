@@ -75,12 +75,13 @@ LinearSystem buildLinearSystem(const optilib::State &state,
 
   return {H, b, chi_square};
 }
+
 } // namespace
 
 namespace optilib {
 
 std::vector<double>
-GSSolver::solve(State &state, const std::vector<Measurement> &measurements,
+GNSolver::solve(State &state, const std::vector<Measurement> &measurements,
                 const int n_iters, const int verbose_level) {
 
   // Initialization

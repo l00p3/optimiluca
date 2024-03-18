@@ -1,6 +1,8 @@
 #include "CLIWrapper.hpp"
 #include "CLI11.hpp"
 
+namespace optilib {
+
 int CommandLineArguments::Initialize(int argc, char **argv) {
   CLI::App cli_app("Optimiluca: Optimizer for a better life.");
   argv = cli_app.ensure_utf8(argv);
@@ -11,8 +13,7 @@ int CommandLineArguments::Initialize(int argc, char **argv) {
                      "# closures in the measurements.");
   cli_app.add_option("-i, --max-iters", max_iters,
                      "Max numbers of iterations for the solver.");
-  cli_app.add_option("-v, --verbose_level", verbose_level,
-                     "Set verbosity level 0 to 2.");
+  cli_app.add_option("-v, --verbose", verbose, "Set verbosity true or false.");
 
   CLI11_PARSE(cli_app, argc, argv);
 
@@ -46,3 +47,5 @@ void CommandLineArguments::check_args() {
     exit(1);
   }
 }
+
+} // namespace optilib

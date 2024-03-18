@@ -13,7 +13,7 @@ int main(int argc, char **argv) {
   cli_args.Initialize(argc, argv);
 
   // Initialization
-  GSSolver solver;
+  GNSolver solver;
 
   // Generate the ground truth and the measurements
   auto [ground_truth, measurements] = State::generateStateAndMeasurements(
@@ -23,10 +23,10 @@ int main(int argc, char **argv) {
   State state(cli_args.state_size);
 
   // Optimize
-  auto chi_stats = solver.solve(state, measurements, cli_args.max_iters,
-                                cli_args.verbose_level);
+  auto chi_stats =
+      solver.solve(state, measurements, cli_args.max_iters, cli_args.verbose);
 
-  if (cli_args.verbose_level == 2) {
+  if (cli_args.verbose) {
     std::cout << std::endl << "Ground truth: " << std::endl;
     std::cout << State(ground_truth) << std::endl;
 
