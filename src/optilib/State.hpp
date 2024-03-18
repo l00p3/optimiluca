@@ -21,7 +21,7 @@ public:
   State(const size_t size);
 
   // Methods
-  void boxPlus(const Eigen::VectorXd &dx);
+  State boxPlus(const Eigen::VectorXd &dx) const;
   double distance(const State &other) const;
 
   // Operators

@@ -121,7 +121,7 @@ GSSolver::solve(State &state, const std::vector<Measurement> &measurements,
     chi_stats.emplace_back(current_chi);
 
     // Update the state
-    state.boxPlus(dx);
+    state = state.boxPlus(dx);
 
     // VERBOSE
     if (verbose_level) {
@@ -252,8 +252,8 @@ DLSolver::solve(State &state, const std::vector<Measurement> &measurements,
     state.boxPlus(this->_dx);
 
     // Compute the ratio for update
-    const double ratio =
-        (0.5 * current_chi - 0.5 * update_chi) / linear_decrease;
+    /* const double ratio = */
+    /*     (0.5 * current_chi - 0.5 * updated_chi) / linear_decrease; */
 
     // Rescale the trust region radius
     // TODO

@@ -25,12 +25,14 @@ State::State(const size_t size) {
 }
 
 // ---------- METHODS ----------
-void State::boxPlus(const Eigen::VectorXd &dx) {
-  auto zipped = std::views::zip(_rotations, dx);
+State State::boxPlus(const Eigen::VectorXd &dx) const {
+  State new_state(this->size());
+  auto zipped = std::views::zip(new_state._rotations, _rotations, dx);
   std::ranges::for_each(zipped, [](const auto &rotations_zipped) {
-    auto &[R, dtheta] = rotations_zipped;
-    R = Eigen::Rotation2Dd(dtheta) * R;
+    auto &[R_new, R, dtheta] = rotations_zipped;
+    R_new = Eigen::Rotation2Dd(dtheta) * R;
   });
+  return new_state;
 }
 
 double State::distance(const State &other) const {
