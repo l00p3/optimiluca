@@ -16,6 +16,7 @@ struct Measurement {
 class State {
 public:
   // Constructors
+  State() : _rotations({}){};
   State(const std::vector<double> &angles);
   State(std::vector<Eigen::Rotation2Dd> &&rotations);
   State(const size_t size);
@@ -26,6 +27,11 @@ public:
 
   // Operators
   inline constexpr size_t size() const { return _rotations.size(); }
+
+  State &operator=(State &&other) {
+    _rotations = std::move(other._rotations);
+    return *this;
+  }
 
   Eigen::Rotation2Dd &operator()(const int idx) { return _rotations.at(idx); }
 

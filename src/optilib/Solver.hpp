@@ -8,8 +8,8 @@ class GNSolver {
 public:
   std::vector<double> solve(State &state,
                             const std::vector<Measurement> &measurements,
-                            const int n_iters = 10,
-                            const int verbose_level = 1);
+                            const int n_iters = 100,
+                            const bool verbose = false);
 };
 
 class DLSolver {

@@ -17,6 +17,26 @@ using namespace optilib;
 using LinearSystem =
     std::tuple<Eigen::SparseMatrix<double>, Eigen::VectorXd, double>;
 
+void printExecutionTime(const std::vector<double> &execution_times) {
+  const double avg_execution_time =
+      (std::accumulate(execution_times.begin(), execution_times.end(), 0.0) /
+       execution_times.size()) *
+      1e-9;
+  std::cout << avg_execution_time << "sec)" << std::setprecision(3);
+}
+
+double computeChiSquare(const State &state,
+                        const std::vector<Measurement> &measurements) {
+  return std::accumulate(
+      measurements.cbegin(), measurements.cend(), 0.0,
+      [&](int chi_square, const Measurement &meas) {
+        return chi_square +
+               (flatten(state(meas.from).inverse() * state(meas.to)) -
+                flatten(meas.z))
+                   .squaredNorm();
+      });
+}
+
 std::tuple<Eigen::Vector4d, Eigen::VectorXd, Eigen::VectorXd>
 computeErrorAndJacobian(const State &state, const Measurement &meas) {
 
@@ -35,7 +55,7 @@ computeErrorAndJacobian(const State &state, const Measurement &meas) {
   return {error, J_from, J_to};
 }
 
-LinearSystem buildLinearSystem(const optilib::State &state,
+LinearSystem buildLinearSystem(const State &state,
                                const std::vector<Measurement> &measurements) {
   // Initialization
   const size_t state_size = state.size();
@@ -82,7 +102,7 @@ namespace optilib {
 
 std::vector<double>
 GNSolver::solve(State &state, const std::vector<Measurement> &measurements,
-                const int n_iters, const int verbose_level) {
+                const int n_iters, const bool verbose) {
 
   // Initialization
   const size_t state_size = state.size();
@@ -93,11 +113,8 @@ GNSolver::solve(State &state, const std::vector<Measurement> &measurements,
   Eigen::VectorXd dx = Eigen::VectorXd::Zero(state_size);
 
   // VERBOSE
-  if (verbose_level) {
+  if (verbose) {
     std::cout << "\n\t OPTIMIZATION STARTED";
-    if (verbose_level == 2) {
-      std::cout << " ( initial guess: " << state << ")";
-    }
     std::cout << std::endl << std::endl;
   }
 
@@ -125,12 +142,9 @@ GNSolver::solve(State &state, const std::vector<Measurement> &measurements,
     state = state.boxPlus(dx);
 
     // VERBOSE
-    if (verbose_level) {
+    if (verbose) {
       std::cout << "\t ITER: " << iter + 0 << ", CHI SQUARE: " << current_chi
                 << std::endl;
-      if (verbose_level == 2) {
-        std::cout << "\t\t State: " << state << std::endl;
-      }
     }
 
     // Termination criteria
@@ -141,17 +155,12 @@ GNSolver::solve(State &state, const std::vector<Measurement> &measurements,
   execution_times.shrink_to_fit();
 
   // VERBOSE
-  if (verbose_level) {
-    const double avg_execution_time =
-        (std::accumulate(execution_times.begin(), execution_times.end(), 0.0) /
-         execution_times.size()) *
-        1e-9;
+  if (verbose) {
     std::cout << std::endl
               << "\t TERMINATED WITH CHI SQUARE: " << chi_stats.back()
-              << " (iter. avg. time: " << avg_execution_time << "sec)"
-              << std::endl
-              << std::setprecision(3);
-    ;
+              << " (iter. avg. time: ";
+    printExecutionTime(execution_times);
+    std::cout << std::endl << std::setprecision(3);
   }
 
   // Done
@@ -235,12 +244,17 @@ DLSolver::solve(State &state, const std::vector<Measurement> &measurements,
     }
 
     // Compute the update
+    State new_state = state.boxPlus(_dx);
 
-    // TODO:
-    // 1. You should find a way to have an updated version of the current state,
-    // that you can discard if the update is not good enough
-    // 2. You should comute H, b and chi_square and reuse it in the next
-    // itaration
+    // Compute the ratio for update
+    const double new_state_chi = computeChiSquare(new_state, measurements);
+    const double update_ratio =
+        (0.5 * current_chi - 0.5 * new_state_chi) / linear_decrease;
+
+    if (update_ratio > 0) {
+      // Apply the update
+      state = std::move(new_state);
+    }
 
     // Check goodness of the step
     /* if (this->_dx_norm <= th) { */
@@ -248,13 +262,6 @@ DLSolver::solve(State &state, const std::vector<Measurement> &measurements,
     /* } else { */
     // Do all the rest
     /* } */
-
-    // Apply the update
-    state.boxPlus(this->_dx);
-
-    // Compute the ratio for update
-    /* const double ratio = */
-    /*     (0.5 * current_chi - 0.5 * updated_chi) / linear_decrease; */
 
     // Rescale the trust region radius
     // TODO

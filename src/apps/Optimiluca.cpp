@@ -26,14 +26,6 @@ int main(int argc, char **argv) {
   auto chi_stats =
       solver.solve(state, measurements, cli_args.max_iters, cli_args.verbose);
 
-  if (cli_args.verbose) {
-    std::cout << std::endl << "Ground truth: " << std::endl;
-    std::cout << State(ground_truth) << std::endl;
-
-    std::cout << std::endl << "Optimized state: " << std::endl;
-    std::cout << state << std::endl;
-  }
-
   std::cout << std::endl
             << "Final angles error: " << state.distance(ground_truth)
             << std::endl;
