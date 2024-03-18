@@ -11,6 +11,7 @@ struct CommandLineArguments {
   int state_size = 8;
   int n_closures = 1;
   int max_iters = 100;
+  bool use_dogleg = false;
   bool verbose = true;
 };
 

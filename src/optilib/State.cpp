@@ -60,8 +60,8 @@ std::tuple<State, std::vector<Measurement>>
 State::generateStateAndMeasurements(const int state_size,
                                     const int n_closures) {
   // Initialize random number generator from 0 to 360 degrees
-  std::random_device rd;
-  std::mt19937 mt(rd());
+  /* std::random_device rd; */
+  std::mt19937 mt(45); // TODO: fixed seed
   std::uniform_real_distribution<double> angles_generator(0.0, 2 * pi);
   std::uniform_int_distribution<int> ids_generator(0, state_size - 1);
 
@@ -90,15 +90,16 @@ State::generateStateAndMeasurements(const int state_size,
   std::vector<int> state_ids(state_size, 0);
   std::iota(state_ids.begin(), state_ids.end(), 0);
   std::shuffle(state_ids.begin(), state_ids.end(), mt);
-  std::ranges::for_each(state_ids, [&](const int from) {
-    int to = ids_generator(mt);
-    // Avoid self-measurements
-    while (from == to) {
-      to = ids_generator(mt);
-    }
-    measurements.emplace_back(rotations[from].inverse() * rotations[to], from,
-                              to);
-  });
+  std::ranges::for_each(
+      state_ids.cbegin(), state_ids.cbegin() + n_closures, [&](const int from) {
+        int to = ids_generator(mt);
+        // Avoid self-measurements
+        while (from == to) {
+          to = ids_generator(mt);
+        }
+        measurements.emplace_back(rotations[from].inverse() * rotations[to],
+                                  from, to);
+      });
 
   // Return the state and measurements
   return {State(std::move(rotations)), measurements};

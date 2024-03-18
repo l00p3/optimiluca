@@ -13,6 +13,8 @@ int CommandLineArguments::Initialize(int argc, char **argv) {
                      "# closures in the measurements.");
   cli_app.add_option("-i, --max-iters", max_iters,
                      "Max numbers of iterations for the solver.");
+  cli_app.add_option("-d, --use-dogleg", use_dogleg,
+                     "If you want to use dogleg solver or not.");
   cli_app.add_option("-v, --verbose", verbose, "Set verbosity true or false.");
 
   CLI11_PARSE(cli_app, argc, argv);

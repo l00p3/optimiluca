@@ -29,7 +29,7 @@ double computeChiSquare(const State &state,
                         const std::vector<Measurement> &measurements) {
   return std::accumulate(
       measurements.cbegin(), measurements.cend(), 0.0,
-      [&](int chi_square, const Measurement &meas) {
+      [&](const int chi_square, const Measurement &meas) {
         return chi_square +
                (flatten(state(meas.from).inverse() * state(meas.to)) -
                 flatten(meas.z))
@@ -169,16 +169,22 @@ GNSolver::solve(State &state, const std::vector<Measurement> &measurements,
 
 std::vector<double>
 DLSolver::solve(State &state, const std::vector<Measurement> &measurements,
-                const int n_iters, const int verbose_level) {
+                const int n_iters, const bool verbose) {
   // Initialization
   const size_t state_size = state.size();
+  std::vector<double> chi_stats;
+  std::vector<double> execution_times;
+  std::chrono::time_point<std::chrono::high_resolution_clock> t1, t2;
   Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> sparse_solver;
   Eigen::VectorXd dx_gn = Eigen::VectorXd::Zero(state_size);
   Eigen::VectorXd dx_sd = Eigen::VectorXd::Zero(state_size);
   double linear_decrease;
 
   // For each iteration
+  chi_stats.reserve(n_iters);
+  execution_times.reserve(n_iters);
   for (int iter = 0; iter < n_iters; ++iter) {
+    t1 = std::chrono::high_resolution_clock::now();
 
     // Compute Hessian and gradient
     const auto [H, b, current_chi] = buildLinearSystem(state, measurements);
@@ -190,7 +196,7 @@ DLSolver::solve(State &state, const std::vector<Measurement> &measurements,
     }
     dx_gn = sparse_solver.solve(-b);
 
-    // Comput the Cauchy point
+    // Compute the Cauchy point
     const double alpha = (b.norm() / (b.transpose() * H * b));
     dx_sd = alpha * b;
     double dx_sd_norm = dx_sd.norm();
@@ -240,7 +246,7 @@ DLSolver::solve(State &state, const std::vector<Measurement> &measurements,
       // Compute the linear decrease
       linear_decrease =
           0.5 * alpha * (1 - beta) * (1 - beta) * b_norm * b_norm +
-          beta * (2 - beta) * current_chi;
+          beta * (2 - beta) * (0.5 * current_chi);
     }
 
     // Compute the update
@@ -251,23 +257,49 @@ DLSolver::solve(State &state, const std::vector<Measurement> &measurements,
     const double update_ratio =
         (0.5 * current_chi - 0.5 * new_state_chi) / linear_decrease;
 
+    // Update the trust region radius
+    if (update_ratio > 0.75)
+      _trust_region_radius = std::max(_trust_region_radius, 3 * _dx_norm);
+    else if (update_ratio < 0.25)
+      _trust_region_radius *= 0.5;
+
+    // Update the stats
+    t2 = std::chrono::high_resolution_clock::now();
+    execution_times.emplace_back((t2 - t1).count());
+    chi_stats.emplace_back(current_chi);
+
+    // Accept or refuse the update
     if (update_ratio > 0) {
       // Apply the update
       state = std::move(new_state);
     }
 
-    // Check goodness of the step
-    /* if (this->_dx_norm <= th) { */
-    // TODO: apply perturbation
-    /* } else { */
-    // Do all the rest
-    /* } */
+    // VERBOSE
+    if (verbose) {
+      std::cout << "\t ITER: " << iter + 0 << ", CHI SQUARE: " << current_chi
+                << ", radius: " << _trust_region_radius
+                << ", ratio: " << update_ratio << std::endl;
+    }
 
-    // Rescale the trust region radius
-    // TODO
+    // Termination criteria
+    if (_dx_norm <= 1e-10) {
+      break;
+    }
+  }
+  chi_stats.shrink_to_fit();
+  execution_times.shrink_to_fit();
+
+  // VERBOSE
+  if (verbose) {
+    std::cout << std::endl
+              << "\t TERMINATED WITH CHI SQUARE: " << chi_stats.back()
+              << " (iter. avg. time: ";
+    printExecutionTime(execution_times);
+    std::cout << std::endl << std::setprecision(3);
   }
 
-  return {0.0};
+  // Done
+  return chi_stats;
 }
 
 } // namespace optilib
