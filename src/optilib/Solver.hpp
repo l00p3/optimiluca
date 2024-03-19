@@ -15,9 +15,8 @@ public:
 class DLSolver {
 public:
   DLSolver(const double &trust_region_radius = 1e4,
-           const double epsilon1 = 0.001, const double epsilon2 = 0.001)
-      : _trust_region_radius(trust_region_radius), _epsilon1(epsilon1),
-        _epsilon2(epsilon2){};
+           const double epsilon = 1e-10)
+      : _trust_region_radius(trust_region_radius), _epsilon(epsilon){};
 
   std::vector<double> solve(State &state,
                             const std::vector<Measurement> &measurements,
@@ -25,8 +24,7 @@ public:
 
 private:
   double _trust_region_radius;
-  double _epsilon1;
-  double _epsilon2;
+  double _epsilon;
   Eigen::VectorXd _dx;
   double _dx_norm;
 };
