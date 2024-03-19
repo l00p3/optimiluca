@@ -284,7 +284,8 @@ DLSolver::solve(State &state, const std::vector<Measurement> &measurements,
     }
 
     // Termination criteria
-    if (_dx_norm <= 1e-10) {
+    if (_dx_norm <= 1e-10 ||
+        _trust_region_radius <= _epsilon2 * (state.norm() + _epsilon2)) {
       break;
     }
   }

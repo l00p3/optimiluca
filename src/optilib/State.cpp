@@ -47,6 +47,14 @@ double State::distance(const State &other) const {
 }
 
 // ---------- OPERATORS ----------
+double State::norm() const {
+  return std::sqrt(
+      std::accumulate(_rotations.cbegin(), _rotations.cend(), 0.0,
+                      [&](const double &val, const Eigen::Rotation2Dd &R) {
+                        return val + R.smallestAngle() * R.smallestAngle();
+                      }));
+}
+
 std::ostream &operator<<(std::ostream &os, const State &state) {
   std::ranges::for_each(state._rotations, [&](const Eigen::Rotation2Dd &R) {
     // Convert to degrees
