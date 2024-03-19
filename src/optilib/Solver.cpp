@@ -179,6 +179,7 @@ DLSolver::solve(State &state, const std::vector<Measurement> &measurements,
   Eigen::VectorXd dx_gn = Eigen::VectorXd::Zero(state_size);
   Eigen::VectorXd dx_sd = Eigen::VectorXd::Zero(state_size);
   double linear_decrease;
+  std::string method_used = "ERROR";
 
   // For each iteration
   chi_stats.reserve(n_iters);
@@ -208,7 +209,7 @@ DLSolver::solve(State &state, const std::vector<Measurement> &measurements,
       // Take dx_gn as solution
       this->_dx = dx_gn;
       this->_dx_norm = dx_gn_norm;
-      std::cout << "GN dx" << std::endl;
+      method_used = "Gauss-Newton";
 
       // Compute the linear decrease
       linear_decrease = 0.5 * current_chi;
@@ -218,7 +219,7 @@ DLSolver::solve(State &state, const std::vector<Measurement> &measurements,
       // Take the intersection of the "leg" to dx_sd with the trust region
       this->_dx = this->_trust_region_radius * b / b_norm;
       this->_dx_norm = this->_dx.norm();
-      std::cout << "SD dx" << std::endl;
+      method_used = "Steepest Descent";
 
       // Compute the linear decrease
       linear_decrease = this->_trust_region_radius *
@@ -242,7 +243,7 @@ DLSolver::solve(State &state, const std::vector<Measurement> &measurements,
       // Take the intersection of the "leg" between dx_gn and dx_sd
       this->_dx = dx_sd + beta * (dx_gn - dx_sd);
       this->_dx_norm = this->_dx.norm();
-      std::cout << "GN/SD dx" << std::endl;
+      method_used = "Hybrid";
 
       // Compute the linear decrease
       linear_decrease = 0.5 * alpha * (1 - beta) * (1 - beta) * b_squared_norm +
@@ -276,9 +277,10 @@ DLSolver::solve(State &state, const std::vector<Measurement> &measurements,
 
     // VERBOSE
     if (verbose) {
-      std::cout << "\t ITER: " << iter + 0 << ", CHI SQUARE: " << current_chi
-                << ", radius: " << _trust_region_radius
-                << ", ratio: " << update_ratio << std::endl;
+      std::cout << "\t ITER: " << iter + 0 << ", \tCHI SQUARE: " << current_chi
+                << ", \tradius: " << _trust_region_radius
+                << ", \tratio: " << update_ratio
+                << ", \tmethod: " << method_used << std::endl;
     }
 
     // Termination criteria

@@ -14,8 +14,8 @@ public:
 
 class DLSolver {
 public:
-  DLSolver(const double &trust_region_radius = 1, const double epsilon1 = 0.001,
-           const double epsilon2 = 0.001)
+  DLSolver(const double &trust_region_radius = 1e4,
+           const double epsilon1 = 0.001, const double epsilon2 = 0.001)
       : _trust_region_radius(trust_region_radius), _epsilon1(epsilon1),
         _epsilon2(epsilon2){};
 
