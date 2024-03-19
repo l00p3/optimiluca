@@ -188,6 +188,7 @@ DLSolver::solve(State &state, const std::vector<Measurement> &measurements,
 
     // Compute Hessian and gradient
     const auto [H, b, current_chi] = buildLinearSystem(state, measurements);
+    const double b_squared_norm = b.squaredNorm();
     const double b_norm = b.norm();
 
     // Compute Gauss-Newton Direction
@@ -195,17 +196,18 @@ DLSolver::solve(State &state, const std::vector<Measurement> &measurements,
       sparse_solver.compute(H);
     }
     dx_gn = sparse_solver.solve(-b);
+    double dx_gn_norm = dx_gn.norm();
 
     // Compute the Cauchy point
-    const double alpha = (b.norm() / (b.transpose() * H * b));
+    const double alpha = (b_squared_norm / (b.transpose() * H * b));
     dx_sd = alpha * b;
     double dx_sd_norm = dx_sd.norm();
 
     // Check if it is inside the trust region, if yes accept it
-    if (dx_gn.norm() <= this->_trust_region_radius) {
+    if (dx_gn_norm <= this->_trust_region_radius) {
       // Take dx_gn as solution
       this->_dx = dx_gn;
-      this->_dx_norm = this->_dx.norm();
+      this->_dx_norm = dx_gn_norm;
       std::cout << "GN dx" << std::endl;
 
       // Compute the linear decrease
@@ -214,7 +216,7 @@ DLSolver::solve(State &state, const std::vector<Measurement> &measurements,
       // Check if it is outside the trust region, if yes take the rescaled
     } else if (dx_sd_norm >= this->_trust_region_radius) {
       // Take the intersection of the "leg" to dx_sd with the trust region
-      this->_dx = this->_trust_region_radius * dx_sd / dx_sd_norm;
+      this->_dx = this->_trust_region_radius * b / b_norm;
       this->_dx_norm = this->_dx.norm();
       std::cout << "SD dx" << std::endl;
 
@@ -229,8 +231,7 @@ DLSolver::solve(State &state, const std::vector<Measurement> &measurements,
       const double radius_minus_dx_sd =
           this->_trust_region_radius * this->_trust_region_radius -
           dx_sd_norm * dx_sd_norm;
-      const double norm_difference = (dx_gn - dx_sd).norm();
-      const double squared_norm_difference = norm_difference * norm_difference;
+      const double squared_norm_difference = (dx_gn - dx_sd).squaredNorm();
       const double squared_term =
           std::sqrt(c * c + squared_norm_difference * radius_minus_dx_sd);
 
@@ -244,9 +245,8 @@ DLSolver::solve(State &state, const std::vector<Measurement> &measurements,
       std::cout << "GN/SD dx" << std::endl;
 
       // Compute the linear decrease
-      linear_decrease =
-          0.5 * alpha * (1 - beta) * (1 - beta) * b_norm * b_norm +
-          beta * (2 - beta) * (0.5 * current_chi);
+      linear_decrease = 0.5 * alpha * (1 - beta) * (1 - beta) * b_squared_norm +
+                        beta * (2 - beta) * (0.5 * current_chi);
     }
 
     // Compute the update
