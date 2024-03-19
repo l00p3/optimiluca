@@ -201,7 +201,7 @@ DLSolver::solve(State &state, const std::vector<Measurement> &measurements,
 
     // Compute the Cauchy point
     const double alpha = (b_squared_norm / (b.transpose() * H * b));
-    dx_sd = alpha * b;
+    dx_sd = -alpha * b;
     double dx_sd_norm = dx_sd.norm();
 
     // Check if it is inside the trust region, if yes accept it
@@ -217,7 +217,7 @@ DLSolver::solve(State &state, const std::vector<Measurement> &measurements,
       // Check if it is outside the trust region, if yes take the rescaled
     } else if (dx_sd_norm >= this->_trust_region_radius) {
       // Take the intersection of the "leg" to dx_sd with the trust region
-      this->_dx = this->_trust_region_radius * b / b_norm;
+      this->_dx = this->_trust_region_radius * -b / b_norm;
       this->_dx_norm = this->_dx.norm();
       method_used = "Steepest Descent";
 
