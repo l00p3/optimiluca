@@ -176,8 +176,8 @@ DLSolver::solve(State &state, const std::vector<Measurement> &measurements,
   std::vector<double> execution_times;
   std::chrono::time_point<std::chrono::high_resolution_clock> t1, t2;
   Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> sparse_solver;
-  Eigen::VectorXd dx_gn = Eigen::VectorXd::Zero(state_size);
-  Eigen::VectorXd dx_sd = Eigen::VectorXd::Zero(state_size);
+  Eigen::VectorXd h_gn = Eigen::VectorXd::Zero(state_size);
+  Eigen::VectorXd alpha_h_sd = Eigen::VectorXd::Zero(state_size);
   double linear_decrease;
   std::string method_used = "ERROR";
 
@@ -196,43 +196,43 @@ DLSolver::solve(State &state, const std::vector<Measurement> &measurements,
     if (iter == 0) {
       sparse_solver.compute(H);
     }
-    dx_gn = sparse_solver.solve(-b);
-    double dx_gn_norm = dx_gn.norm();
+    h_gn = sparse_solver.solve(-b);
+    const double h_gn_norm = h_gn.norm();
 
     // Compute the Cauchy point
     const double alpha = (b_squared_norm / (b.transpose() * H * b));
-    dx_sd = -alpha * b;
-    double dx_sd_norm = dx_sd.norm();
+    alpha_h_sd = -alpha * b;
+    const double alpha_h_sd_norm = alpha_h_sd.norm();
 
     // Check if it is inside the trust region, if yes accept it
-    if (dx_gn_norm <= this->_trust_region_radius) {
+    if (h_gn_norm <= this->_trust_region_radius) {
       // Take dx_gn as solution
-      this->_dx = dx_gn;
-      this->_dx_norm = dx_gn_norm;
+      this->_h_dl = h_gn;
+      this->_h_dl_norm = h_gn_norm;
       method_used = "Gauss-Newton";
 
       // Compute the linear decrease
       linear_decrease = 0.5 * current_chi;
 
       // Check if it is outside the trust region, if yes take the rescaled
-    } else if (dx_sd_norm >= this->_trust_region_radius) {
+    } else if (alpha_h_sd_norm >= this->_trust_region_radius) {
       // Take the intersection of the "leg" to dx_sd with the trust region
-      this->_dx = this->_trust_region_radius * -b / b_norm;
-      this->_dx_norm = this->_dx.norm();
+      this->_h_dl = this->_trust_region_radius * -b / b_norm;
+      this->_h_dl_norm = this->_h_dl.norm();
       method_used = "Steepest Descent";
 
       // Compute the linear decrease
       linear_decrease = this->_trust_region_radius *
-                        (2 * dx_sd_norm - this->_trust_region_radius) /
+                        (2 * alpha_h_sd_norm - this->_trust_region_radius) /
                         (2 * alpha);
 
     } else {
       // Precomputation
-      const double c = dx_sd.transpose() * (dx_gn - dx_sd);
+      const double c = alpha_h_sd.transpose() * (h_gn - alpha_h_sd);
       const double radius_minus_dx_sd =
           this->_trust_region_radius * this->_trust_region_radius -
-          dx_sd_norm * dx_sd_norm;
-      const double squared_norm_difference = (dx_gn - dx_sd).squaredNorm();
+          alpha_h_sd_norm * alpha_h_sd_norm;
+      const double squared_norm_difference = (h_gn - alpha_h_sd).squaredNorm();
       const double squared_term =
           std::sqrt(c * c + squared_norm_difference * radius_minus_dx_sd);
 
@@ -241,8 +241,8 @@ DLSolver::solve(State &state, const std::vector<Measurement> &measurements,
                               : (-c + squared_term) / squared_norm_difference;
 
       // Take the intersection of the "leg" between dx_gn and dx_sd
-      this->_dx = dx_sd + beta * (dx_gn - dx_sd);
-      this->_dx_norm = this->_dx.norm();
+      this->_h_dl = alpha_h_sd + beta * (h_gn - alpha_h_sd);
+      this->_h_dl_norm = this->_h_dl.norm();
       method_used = "Hybrid";
 
       // Compute the linear decrease
@@ -251,7 +251,7 @@ DLSolver::solve(State &state, const std::vector<Measurement> &measurements,
     }
 
     // Compute the update
-    State new_state = state.boxPlus(_dx);
+    State new_state = state.boxPlus(_h_dl);
 
     // Compute the ratio for update
     const double new_state_chi = computeChiSquare(new_state, measurements);
@@ -260,7 +260,7 @@ DLSolver::solve(State &state, const std::vector<Measurement> &measurements,
 
     // Update the trust region radius
     if (update_ratio > 0.75)
-      _trust_region_radius = std::max(_trust_region_radius, 3 * _dx_norm);
+      _trust_region_radius = std::max(_trust_region_radius, 3 * _h_dl_norm);
     else if (update_ratio < 0.25)
       _trust_region_radius *= 0.5;
 
@@ -285,7 +285,7 @@ DLSolver::solve(State &state, const std::vector<Measurement> &measurements,
 
     // Termination criteria
     const double state_norm = state.norm();
-    if (_dx_norm <= _epsilon * (state_norm + _epsilon) ||
+    if (_h_dl_norm <= _epsilon * (state_norm + _epsilon) ||
         _trust_region_radius <= _epsilon * (state_norm + _epsilon)) {
       break;
     }

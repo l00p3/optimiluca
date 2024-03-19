@@ -25,8 +25,8 @@ public:
 private:
   double _trust_region_radius;
   double _epsilon;
-  Eigen::VectorXd _dx;
-  double _dx_norm;
+  Eigen::VectorXd _h_dl;
+  double _h_dl_norm;
 };
 
 } // namespace optilib
