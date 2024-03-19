@@ -16,4 +16,5 @@ make run
  - Current Average Iteration Execution Time (1000 states, 1000 closures): 0.025 sec
 
 ## TODO
- - DogLeg solver
+ - Dog Leg solver code structure to improve
+ - SE(3) states
