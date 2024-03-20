@@ -21,22 +21,30 @@ public:
                         const int n_iters = 100, const bool verbose = false);
 
 private:
+  double _computeDogLegStep(const State &state,
+                            const std::vector<Measurement> &measurements,
+                            const int iter);
+  void _computeGaussNewtonSolution(const Eigen::SparseMatrix<double> &H,
+                                   const Eigen::VectorXd &b,
+                                   const bool compute_sparse_solver);
+  void _computeCauchyPoint(const Eigen::SparseMatrix<double> &H,
+                           const Eigen::VectorXd &b,
+                           const double &b_squared_norm);
+  double _computeBeta(const double &alpha_h_sd_norm);
+  void _updateState(State &state, const std::vector<Measurement> &measurements,
+                    const double &current_chi);
   void _updateTrustRegionRadius();
-  Eigen::VectorXd
-  _computeGaussNewtonSolution(const Eigen::SparseMatrix<double> &H,
-                              const Eigen::VectorXd &b,
-                              const bool compute_sparse_solver);
-  std::pair<double, Eigen::VectorXd>
-  _computeCauchyPoint(const Eigen::SparseMatrix<double> &H,
-                      const Eigen::VectorXd &b, const double &b_squared_norm);
-  void _computeHybridPoint();
-  bool _checkTermination();
-  void _updateState();
+  bool _checkTermination(const double &state_norm);
 
   double _trust_region_radius;
   double _epsilon; // For termination
   Eigen::VectorXd _h_dl;
+  Eigen::VectorXd _h_gn;
+  Eigen::VectorXd _alpha_h_sd;
+  double _alpha;
   double _h_dl_norm;
+  double _linear_decrease;
+  double _update_ratio;
   Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> _sparse_solver;
 };
 

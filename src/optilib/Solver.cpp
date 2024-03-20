@@ -4,6 +4,7 @@
 #include <numeric>
 #include <ranges>
 #include <utility>
+#include <vector>
 
 #include "Lumath.hpp"
 #include "Solver.hpp"
@@ -315,9 +316,10 @@ State Solver::solveWithDogLeg(const State &state,
   const double state_size = state.size();
   std::vector<double> execution_times;
   Timer t1, t2;
-  Eigen::VectorXd h_gn = Eigen::VectorXd::Zero(state_size);
-  Eigen::VectorXd alpha_h_sd = Eigen::VectorXd::Zero(state_size);
-  double alpha = 0.0;
+
+  // Initialize direction vectors sizes
+  this->_h_gn = Eigen::VectorXd::Zero(state_size);
+  this->_alpha_h_sd = Eigen::VectorXd::Zero(state_size);
 
   // For each iteration
   execution_times.reserve(n_iters);
@@ -325,40 +327,126 @@ State Solver::solveWithDogLeg(const State &state,
     // Execution time
     t1 = std::chrono::high_resolution_clock::now();
 
-    // Compute Hessian and gradient
-    const auto [H, b, current_chi] = buildLinearSystem(state, measurements);
-    const double b_squared_norm = b.squaredNorm();
-    const double b_norm = b.norm();
+    const double current_chi =
+        this->_computeDogLegStep(state, measurements, iter);
 
-    // Compute Gauss-Newton Direction
-    h_gn = _computeGaussNewtonSolution(H, b, iter == 0);
-    const double h_gn_norm = h_gn.norm();
+    this->_updateState(optimized_state, measurements, current_chi);
 
-    // Compute the Cauchy point
-    std::tie(alpha, alpha_h_sd) = _computeCauchyPoint(H, b, b_squared_norm);
-    const double alpha_h_sd_norm = alpha_h_sd.norm();
+    this->_updateTrustRegionRadius();
+
+    // Update the stats
+    t2 = std::chrono::high_resolution_clock::now();
+    execution_times.emplace_back((t2 - t1).count());
+
+    if (this->_checkTermination(state.norm()))
+      break;
   }
   execution_times.shrink_to_fit();
 
   return optimized_state;
 }
 
-Eigen::VectorXd
-Solver::_computeGaussNewtonSolution(const Eigen::SparseMatrix<double> &H,
-                                    const Eigen::VectorXd &b,
-                                    const bool compute_sparse_solver) {
-  if (compute_sparse_solver)
-    _sparse_solver.compute(H);
-  return _sparse_solver.solve(-b);
+double Solver::_computeDogLegStep(const State &state,
+                                  const std::vector<Measurement> &measurements,
+                                  const int iter) {
+  // Compute Hessian and gradient
+  const auto [H, b, current_chi] = buildLinearSystem(state, measurements);
+  const double b_squared_norm = b.squaredNorm();
+  const double b_norm = b.norm();
+
+  // Compute Gauss-Newton Direction
+  _computeGaussNewtonSolution(H, b, iter == 0);
+  const double h_gn_norm = this->_h_gn.norm();
+
+  // Compute the Cauchy point
+  _computeCauchyPoint(H, b, b_squared_norm);
+  const double alpha_h_sd_norm = this->_alpha_h_sd.norm();
+
+  if (h_gn_norm <= this->_trust_region_radius) {
+    // Case 1: Gauss-Newton
+    this->_h_dl = _h_gn;
+    this->_linear_decrease = 0.5 * current_chi;
+  } else if (alpha_h_sd_norm >= this->_trust_region_radius) {
+    // Case 2: Chauchy Point
+    this->_h_dl = this->_trust_region_radius * -b / b_norm;
+    this->_linear_decrease =
+        this->_trust_region_radius *
+        (2 * alpha_h_sd_norm - this->_trust_region_radius) / (2 * this->_alpha);
+  } else {
+    // Case 3: "Hybrid"
+    const double beta = _computeBeta(alpha_h_sd_norm);
+    this->_h_dl = _alpha_h_sd + beta * (_h_gn - _alpha_h_sd);
+    this->_linear_decrease =
+        0.5 * this->_alpha * (1 - beta) * (1 - beta) * b_squared_norm +
+        beta * (2 - beta) * (0.5 * current_chi);
+  }
+
+  this->_h_dl_norm = this->_h_dl.norm();
+
+  return current_chi;
 }
 
-std::pair<double, Eigen::VectorXd>
-Solver::_computeCauchyPoint(const Eigen::SparseMatrix<double> &H,
-                            const Eigen::VectorXd &b,
-                            const double &b_squared_norm) {
+void Solver::_computeGaussNewtonSolution(const Eigen::SparseMatrix<double> &H,
+                                         const Eigen::VectorXd &b,
+                                         const bool compute_sparse_solver) {
+  if (compute_sparse_solver)
+    _sparse_solver.compute(H);
+  this->_h_gn = _sparse_solver.solve(-b);
+}
 
-  const double alpha = (b_squared_norm / (b.transpose() * H * b));
-  return {alpha, -alpha * b};
+void Solver::_computeCauchyPoint(const Eigen::SparseMatrix<double> &H,
+                                 const Eigen::VectorXd &b,
+                                 const double &b_squared_norm) {
+
+  this->_alpha = (b_squared_norm / (b.transpose() * H * b));
+  this->_alpha_h_sd = -this->_alpha * b;
+}
+
+double Solver::_computeBeta(const double &alpha_h_sd_norm) {
+  const double c =
+      this->_alpha_h_sd.transpose() * (this->_h_gn - this->_alpha_h_sd);
+  const double radius_minus_dx_sd =
+      this->_trust_region_radius * this->_trust_region_radius -
+      alpha_h_sd_norm * alpha_h_sd_norm;
+  const double squared_norm_difference =
+      (this->_h_gn - this->_alpha_h_sd).squaredNorm();
+  const double squared_term =
+      std::sqrt(c * c + squared_norm_difference * radius_minus_dx_sd);
+
+  return (c <= 0) ? radius_minus_dx_sd / (c + squared_term)
+                  : (-c + squared_term) / squared_norm_difference;
+}
+
+void Solver::_updateState(State &state,
+                          const std::vector<Measurement> &measurements,
+                          const double &current_chi) {
+  // Compute the update
+  State new_state = state.boxPlus(this->_h_dl);
+
+  // Compute the ratio for update
+  const double new_state_chi = computeChiSquare(new_state, measurements);
+  this->_update_ratio =
+      (0.5 * current_chi - 0.5 * new_state_chi) / this->_linear_decrease;
+
+  // Accept or refuse the update
+  if (this->_update_ratio > 0) {
+    // Apply the update
+    state = std::move(new_state);
+  }
+}
+
+void Solver::_updateTrustRegionRadius() {
+  if (this->_update_ratio > 0.75)
+    this->_trust_region_radius =
+        std::max(this->_trust_region_radius, 3 * this->_h_dl_norm);
+  else if (this->_update_ratio < 0.25)
+    this->_trust_region_radius *= 0.5;
+}
+
+bool Solver::_checkTermination(const double &state_norm) {
+  return this->_h_dl_norm <= this->_epsilon * (state_norm + this->_epsilon) ||
+         this->_trust_region_radius <=
+             this->_epsilon * (state_norm + this->_epsilon);
 }
 
 } // namespace optilib

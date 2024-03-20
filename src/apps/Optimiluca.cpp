@@ -13,8 +13,7 @@ int main(int argc, char **argv) {
   cli_args.Initialize(argc, argv);
 
   // Initialization
-  GNSolver gn_solver;
-  DLSolver dl_solver;
+  Solver solver;
 
   // Generate the ground truth and the measurements
   auto [ground_truth, measurements] = State::generateStateAndMeasurements(
@@ -25,9 +24,11 @@ int main(int argc, char **argv) {
 
   // Optimize
   if (cli_args.use_dogleg)
-    dl_solver.solve(state, measurements, cli_args.max_iters, cli_args.verbose);
-  else
-    gn_solver.solve(state, measurements, cli_args.max_iters, cli_args.verbose);
+    solver.solveWithDogLeg(state, measurements, cli_args.max_iters,
+                           cli_args.verbose);
+  /* else */
+  /*   solver.solveWithGaussNewton(state, measurements, cli_args.max_iters, */
+  /*                               cli_args.verbose); */
 
   std::cout << std::endl
             << "Final angles error: " << state.distance(ground_truth)
