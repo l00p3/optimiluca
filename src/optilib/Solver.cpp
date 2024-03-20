@@ -1,4 +1,3 @@
-#include <chrono>
 #include <cmath>
 #include <iostream>
 #include <numeric>
@@ -10,21 +9,12 @@
 #include "Solver.hpp"
 #include "State.hpp"
 
+// --- Utility functions in unnamed namespace ---
 namespace {
 using namespace optilib;
 
-using Timer = std::chrono::time_point<std::chrono::high_resolution_clock>;
-
 using LinearSystem =
     std::tuple<Eigen::SparseMatrix<double>, Eigen::VectorXd, double>;
-
-void printExecutionTime(const std::vector<double> &execution_times) {
-  const double avg_execution_time =
-      (std::accumulate(execution_times.begin(), execution_times.end(), 0.0) /
-       execution_times.size()) *
-      1e-9;
-  std::cout << avg_execution_time << "sec)" << std::setprecision(3);
-}
 
 double computeChiSquare(const State &state,
                         const std::vector<Measurement> &measurements) {
@@ -99,74 +89,57 @@ LinearSystem buildLinearSystem(const State &state,
 
 } // namespace
 
+// --- METHODS IMPLEMENTATIONS ---
 namespace optilib {
 
-std::vector<double>
-GNSolver::solve(State &state, const std::vector<Measurement> &measurements,
-                const int n_iters, const bool verbose) {
-
+// --- MAIN PUBLIC METHODS ---
+State Solver::solveWithGaussNewton(const State &state,
+                                   const std::vector<Measurement> &measurements,
+                                   const int n_iters, const bool verbose) {
   // Initialization
-  const size_t state_size = state.size();
-  std::vector<double> chi_stats;
-  std::vector<double> execution_times;
-  std::chrono::time_point<std::chrono::high_resolution_clock> t1, t2;
-  Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> sparse_solver;
-  Eigen::VectorXd dx = Eigen::VectorXd::Zero(state_size);
+  State optimized_state = state;
+  const double state_size = state.size();
+  double current_chi = 0.0;
+  this->_startTimer(n_iters);
 
-  // VERBOSE
-  if (verbose) {
-    std::cout << "\n\t OPTIMIZATION STARTED";
-    std::cout << std::endl << std::endl;
-  }
-
-  // For each iterations
-  chi_stats.reserve(n_iters);
-  execution_times.reserve(n_iters);
+  // For each iteration
   for (int iter = 0; iter < n_iters; ++iter) {
-    t1 = std::chrono::high_resolution_clock::now();
+    // Execution time
+    this->_updateTimerIterationStarted();
 
-    // Compute the entry of the linear system for each measurement
-    const auto [H, b, current_chi] = buildLinearSystem(state, measurements);
+    // Compute Hessian and gradient
+    const auto [H, b, current_chi] =
+        buildLinearSystem(optimized_state, measurements);
 
-    // Compute the update: fixing the first state to origin
-    if (iter == 0) {
-      sparse_solver.compute(H);
-    }
-    dx = sparse_solver.solve(-b);
-
-    // Update the stats
-    t2 = std::chrono::high_resolution_clock::now();
-    execution_times.emplace_back((t2 - t1).count());
-    chi_stats.emplace_back(current_chi);
+    // Compute Gauss-Newton Direction
+    _computeGaussNewtonSolution(H, b, iter == 0);
 
     // Update the state
-    state = state.boxPlus(dx);
+    optimized_state = optimized_state.boxPlus(this->_h_gn);
+
+    // Execution time
+    this->_updateTimerIterationFinished();
 
     // VERBOSE
     if (verbose) {
-      std::cout << "\t ITER: " << iter + 0 << ", CHI SQUARE: " << current_chi
-                << std::endl;
+      this->_printIterationInfoGaussNewton(iter, current_chi);
     }
 
     // Termination criteria
-    if (dx.norm() < 1e-10)
+    if (this->_checkTerminationGaussNewton(this->_h_gn.norm()))
       break;
   }
-  chi_stats.shrink_to_fit();
-  execution_times.shrink_to_fit();
+
+  // Execution time
+  const double avg_execution_time = this->_stopTimer();
 
   // VERBOSE
   if (verbose) {
-    std::cout << std::endl
-              << "\t TERMINATED WITH CHI SQUARE: " << chi_stats.back()
-              << " (iter. avg. time: ";
-    printExecutionTime(execution_times);
-    std::cout << std::endl << std::setprecision(3);
+    this->_printTerminationInfo(current_chi, avg_execution_time);
   }
 
-  // Done
-  return chi_stats;
-};
+  return std::move(optimized_state);
+}
 
 State Solver::solveWithDogLeg(const State &state,
                               const std::vector<Measurement> &measurements,
@@ -176,18 +149,16 @@ State Solver::solveWithDogLeg(const State &state,
   State optimized_state = state;
   const double state_size = state.size();
   double current_chi = 0.0;
-  std::vector<double> execution_times;
-  Timer t1, t2;
+  this->_startTimer(n_iters);
 
   // Initialize direction vectors sizes
   this->_h_gn = Eigen::VectorXd::Zero(state_size);
   this->_alpha_h_sd = Eigen::VectorXd::Zero(state_size);
 
   // For each iteration
-  execution_times.reserve(n_iters);
   for (int iter = 0; iter < n_iters; ++iter) {
     // Execution time
-    t1 = std::chrono::high_resolution_clock::now();
+    this->_updateTimerIterationStarted();
 
     current_chi = this->_computeDogLegStep(optimized_state, measurements, iter);
 
@@ -195,34 +166,30 @@ State Solver::solveWithDogLeg(const State &state,
 
     this->_updateTrustRegionRadius();
 
-    // Update the stats
-    t2 = std::chrono::high_resolution_clock::now();
-    execution_times.emplace_back((t2 - t1).count());
+    // Execution time
+    this->_updateTimerIterationFinished();
 
     // VERBOSE
     if (verbose) {
-      std::cout << "\t ITER: " << iter + 0 << ", \tCHI SQUARE: " << current_chi
-                << ", \tradius: " << this->_trust_region_radius
-                << ", \tratio: " << this->_update_ratio << std::endl;
+      this->_printIterationInfoDogLeg(iter, current_chi);
     }
 
-    if (this->_checkTermination(optimized_state.norm()))
+    if (this->_checkTerminationDogLeg(optimized_state.norm()))
       break;
   }
-  execution_times.shrink_to_fit();
+
+  // Execution time
+  const double avg_execution_time = this->_stopTimer();
 
   // VERBOSE
   if (verbose) {
-    std::cout << std::endl
-              << "\t TERMINATED WITH CHI SQUARE: " << current_chi
-              << " (iter. avg. time: ";
-    printExecutionTime(execution_times);
-    std::cout << std::endl << std::setprecision(3);
+    this->_printTerminationInfo(current_chi, avg_execution_time);
   }
 
   return std::move(optimized_state);
 }
 
+// --- MAIN PRIVATE METHODS ---
 double Solver::_computeDogLegStep(const State &state,
                                   const std::vector<Measurement> &measurements,
                                   const int iter) {
@@ -241,7 +208,7 @@ double Solver::_computeDogLegStep(const State &state,
 
   if (h_gn_norm <= this->_trust_region_radius) {
     // Case 1: Gauss-Newton
-    this->_h_dl = _h_gn;
+    this->_h_dl = this->_h_gn;
     this->_linear_decrease = 0.5 * current_chi;
   } else if (alpha_h_sd_norm >= this->_trust_region_radius) {
     // Case 2: Chauchy Point
@@ -320,10 +287,65 @@ void Solver::_updateTrustRegionRadius() {
     this->_trust_region_radius *= 0.5;
 }
 
-bool Solver::_checkTermination(const double &state_norm) {
+bool Solver::_checkTerminationGaussNewton(const double &h_gn_norm) {
+  return h_gn_norm < 1e-10;
+}
+
+bool Solver::_checkTerminationDogLeg(const double &state_norm) {
   return this->_h_dl_norm <= this->_epsilon * (state_norm + this->_epsilon) ||
          this->_trust_region_radius <=
              this->_epsilon * (state_norm + this->_epsilon);
+}
+
+// --- VERBOSE METHODS ---
+void Solver::_printStart() {
+  std::cout << "\n\t OPTIMIZATION STARTED";
+  std::cout << std::endl << std::endl;
+}
+
+void Solver::_printIterationInfoGaussNewton(const int iter,
+                                            const double &current_chi) {
+  std::cout << "\t ITER: " << iter + 0 << ", CHI SQUARE: " << current_chi
+            << std::endl;
+}
+
+void Solver::_printIterationInfoDogLeg(const int iter,
+                                       const double &current_chi) {
+  std::cout << "\t ITER: " << iter + 0 << ", \tCHI SQUARE: " << current_chi
+            << ", \tradius: " << this->_trust_region_radius
+            << ", \tratio: " << this->_update_ratio << std::endl;
+}
+
+void Solver::_printTerminationInfo(const double &chi_square,
+                                   const double &avg_execution_time) {
+  std::cout << std::endl
+            << "\t TERMINATED WITH CHI SQUARE: " << chi_square
+            << " (iter. avg. time: " << avg_execution_time << "sec)"
+            << std::endl
+            << std::setprecision(3);
+}
+
+// --- EXECUTION TIME ATTRIBUTES ---
+void Solver::_startTimer(const int &n_iters) {
+  this->_execution_times = {};             // Empty the vector
+  this->_execution_times.reserve(n_iters); // Reserve size
+}
+
+void Solver::_updateTimerIterationStarted() {
+  this->_t1 = std::chrono::high_resolution_clock::now();
+}
+
+void Solver::_updateTimerIterationFinished() {
+  this->_t2 = std::chrono::high_resolution_clock::now();
+  this->_execution_times.emplace_back((this->_t2 - this->_t1).count());
+}
+
+double Solver::_stopTimer() {
+  this->_execution_times.shrink_to_fit();
+  return (std::accumulate(this->_execution_times.begin(),
+                          this->_execution_times.end(), 0.0) /
+          this->_execution_times.size()) *
+         1e-9;
 }
 
 } // namespace optilib

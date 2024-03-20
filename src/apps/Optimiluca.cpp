@@ -23,11 +23,12 @@ int main(int argc, char **argv) {
   State state(cli_args.state_size);
 
   // Optimize
-  state = solver.solveWithDogLeg(state, measurements, cli_args.max_iters,
-                                 cli_args.verbose);
-  /* else */
-  /*   solver.solveWithGaussNewton(state, measurements, cli_args.max_iters, */
-  /*                               cli_args.verbose); */
+  if (cli_args.use_dogleg)
+    state = solver.solveWithDogLeg(state, measurements, cli_args.max_iters,
+                                   cli_args.verbose);
+  else
+    state = solver.solveWithGaussNewton(state, measurements, cli_args.max_iters,
+                                        cli_args.verbose);
 
   std::cout << std::endl
             << "Final angles error: " << state.distance(ground_truth)

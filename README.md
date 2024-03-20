@@ -1,5 +1,5 @@
 # Optimiluca
-Optimiluca: Optimization library by Luca
+Optimiluca: Pose Graph Optimization Library by Luca
 
 ## Requirements
  - gcc >= 13.1.0
@@ -16,5 +16,4 @@ make run
  - Current Average Iteration Execution Time (1000 states, 1000 closures): 0.025 sec
 
 ## TODO
- - Dog Leg solver code structure to improve
  - SE(3) states
