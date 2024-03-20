@@ -1,18 +1,18 @@
 #include <chrono>
 #include <cmath>
-#include <eigen3/Eigen/Dense>
-#include <eigen3/Eigen/Sparse>
 #include <iostream>
 #include <numeric>
 #include <ranges>
+#include <utility>
 
 #include "Lumath.hpp"
 #include "Solver.hpp"
 #include "State.hpp"
 
-// Linear System Entry Struct
 namespace {
 using namespace optilib;
+
+using Timer = std::chrono::time_point<std::chrono::high_resolution_clock>;
 
 using LinearSystem =
     std::tuple<Eigen::SparseMatrix<double>, Eigen::VectorXd, double>;
@@ -304,6 +304,61 @@ DLSolver::solve(State &state, const std::vector<Measurement> &measurements,
 
   // Done
   return chi_stats;
+}
+
+State Solver::solveWithDogLeg(const State &state,
+                              const std::vector<Measurement> &measurements,
+                              const int n_iters, const bool verbose) {
+
+  // Initialization
+  State optimized_state = state;
+  const double state_size = state.size();
+  std::vector<double> execution_times;
+  Timer t1, t2;
+  Eigen::VectorXd h_gn = Eigen::VectorXd::Zero(state_size);
+  Eigen::VectorXd alpha_h_sd = Eigen::VectorXd::Zero(state_size);
+  double alpha = 0.0;
+
+  // For each iteration
+  execution_times.reserve(n_iters);
+  for (int iter = 0; iter < n_iters; ++iter) {
+    // Execution time
+    t1 = std::chrono::high_resolution_clock::now();
+
+    // Compute Hessian and gradient
+    const auto [H, b, current_chi] = buildLinearSystem(state, measurements);
+    const double b_squared_norm = b.squaredNorm();
+    const double b_norm = b.norm();
+
+    // Compute Gauss-Newton Direction
+    h_gn = _computeGaussNewtonSolution(H, b, iter == 0);
+    const double h_gn_norm = h_gn.norm();
+
+    // Compute the Cauchy point
+    std::tie(alpha, alpha_h_sd) = _computeCauchyPoint(H, b, b_squared_norm);
+    const double alpha_h_sd_norm = alpha_h_sd.norm();
+  }
+  execution_times.shrink_to_fit();
+
+  return optimized_state;
+}
+
+Eigen::VectorXd
+Solver::_computeGaussNewtonSolution(const Eigen::SparseMatrix<double> &H,
+                                    const Eigen::VectorXd &b,
+                                    const bool compute_sparse_solver) {
+  if (compute_sparse_solver)
+    _sparse_solver.compute(H);
+  return _sparse_solver.solve(-b);
+}
+
+std::pair<double, Eigen::VectorXd>
+Solver::_computeCauchyPoint(const Eigen::SparseMatrix<double> &H,
+                            const Eigen::VectorXd &b,
+                            const double &b_squared_norm) {
+
+  const double alpha = (b_squared_norm / (b.transpose() * H * b));
+  return {alpha, -alpha * b};
 }
 
 } // namespace optilib
