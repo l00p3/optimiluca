@@ -23,9 +23,8 @@ int main(int argc, char **argv) {
   State state(cli_args.state_size);
 
   // Optimize
-  if (cli_args.use_dogleg)
-    solver.solveWithDogLeg(state, measurements, cli_args.max_iters,
-                           cli_args.verbose);
+  state = solver.solveWithDogLeg(state, measurements, cli_args.max_iters,
+                                 cli_args.verbose);
   /* else */
   /*   solver.solveWithGaussNewton(state, measurements, cli_args.max_iters, */
   /*                               cli_args.verbose); */
