@@ -17,6 +17,11 @@ Eigen::Matrix4d v2T(const Eigen::VectorXd &v) {
   return T;
 }
 
+Eigen::Matrix3d skew(const Eigen::Vector3d &v) {
+  return Eigen::Matrix3d(
+      {{0, -v(2), v(1)}, {v(2), 0, -v(0)}, {-v(1), v(0), 0}});
+}
+
 Eigen::Matrix3d Rx(const double &angle) {
   return Eigen::Matrix3d(
       {{1, 0, 0}, {0, cos(angle), -sin(angle)}, {0, sin(angle), cos(angle)}});

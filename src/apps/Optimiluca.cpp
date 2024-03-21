@@ -19,15 +19,6 @@ int main(int argc, char **argv) {
   auto [ground_truth, measurements] = State::generateStateAndMeasurements(
       cli_args.state_size, cli_args.n_closures);
 
-  Eigen::VectorXi v = Eigen::VectorXi::Zero(5);
-  v(0) = 1;
-  v(1) = 2;
-  v(2) = 3;
-  v(3) = 4;
-  v(4) = 5;
-  std::cout << v.block<3, 1>(2, 0) << std::endl;
-  exit(0);
-
   // Define the initial guess at 0
   State state(cli_args.state_size);
 

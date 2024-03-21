@@ -8,7 +8,6 @@
 #include "Lumath.hpp"
 #include "Solver.hpp"
 #include "State.hpp"
-/*
 
 // --- Utility functions in unnamed namespace ---
 namespace {
@@ -29,22 +28,28 @@ double computeChiSquare(const State &state,
       });
 }
 
-std::tuple<Eigen::Vector4d, Eigen::VectorXd, Eigen::VectorXd>
+std::tuple<Eigen::VectorXd, Eigen::MatrixXd>
 computeErrorAndJacobian(const State &state, const Measurement &meas) {
 
+  // Initialize some reference for readability
+  const Eigen::Matrix3d &R_from = state(meas.from).block<3, 3>(0, 0);
+  const Eigen::Matrix3d R_from_transpose = R_from.transpose();
+  const Eigen::Matrix3d &R_to = state(meas.to).block<3, 3>(0, 0);
+  const Eigen::Vector3d &t_to = state(meas.to).block<3, 1>(0, 3);
+
   // Compute the error
-  Eigen::Vector4d error =
-      flatten(state(meas.from).inverse() * state(meas.to)) - flatten(meas.z);
+  Eigen::VectorXd error =
+      flatten(T_inverse(state(meas.from)) * state(meas.to)) - flatten(meas.z);
 
   // Compute the Jacobian
-  Eigen::VectorXd J_from = Eigen::VectorXd::Zero(4);
-  Eigen::VectorXd J_to = Eigen::VectorXd::Zero(4);
-  J_from = flatten(rotationDerivative(state(meas.from)).transpose() *
-                   state(meas.to));
-  J_to =
-      flatten(state(meas.from).inverse() * rotationDerivative(state(meas.to)));
+  Eigen::MatrixXd J = Eigen::MatrixXd::Zero(12, 6);
+  J.block<9, 1>(0, 3) = (R_from_transpose * Rx_der_0() * R_to).reshaped();
+  J.block<9, 1>(0, 4) = (R_from_transpose * Ry_der_0() * R_to).reshaped();
+  J.block<9, 1>(0, 5) = (R_from_transpose * Rz_der_0() * R_to).reshaped();
+  J.block<3, 3>(9, 0) = R_from_transpose * 10;
+  J.block<3, 3>(9, 3) = -R_from_transpose * skew(t_to);
 
-  return {error, J_from, J_to};
+  return {error, J};
 }
 
 LinearSystem buildLinearSystem(const State &state,
@@ -52,27 +57,38 @@ LinearSystem buildLinearSystem(const State &state,
   // Initialization
   const size_t state_size = state.size();
   std::vector<Eigen::Triplet<double>> H_triplets;
-  Eigen::SparseMatrix<double> H(state_size, state_size);
-  Eigen::VectorXd b = Eigen::VectorXd::Zero(state_size);
+  Eigen::SparseMatrix<double> H(state_size * 6, state_size * 6);
+  Eigen::VectorXd b = Eigen::VectorXd::Zero(state_size * 6);
   double chi_square = 0.0;
 
   // Fill the linear system
-  H_triplets.reserve((measurements.size() * 4) + 1);
+  H_triplets.reserve((measurements.size() * 36) * 4 + 1);
   std::for_each(
       measurements.cbegin(), measurements.cend(), [&](const Measurement &meas) {
         // Compute the error and jacobian
-        auto [e, J_from, J_to] = computeErrorAndJacobian(state, meas);
+        const auto [e, J] = computeErrorAndJacobian(state, meas);
+        exit(0);
 
-        // Fill Heassian
-        H_triplets.emplace_back(meas.from, meas.from,
-                                J_from.transpose() * J_from);
-        H_triplets.emplace_back(meas.from, meas.to, J_from.transpose() * J_to);
-        H_triplets.emplace_back(meas.to, meas.from, J_to.transpose() * J_from);
-        H_triplets.emplace_back(meas.to, meas.to, J_to.transpose() * J_to);
+        Eigen::VectorXd J_transpose_J = (J.transpose() * J).reshaped();
+        Eigen::VectorXd J_transpose_e = J.transpose() * e;
+
+        // Fill Hessian
+        std::ranges::for_each(std::views::enumerate(J_transpose_J),
+                              [&](const auto &idx_val) {
+                                const auto &[idx, val] = idx_val;
+                                H_triplets.emplace_back(0, 0, val);
+                              });
+
+        H_triplets.emplace_back(meas.from, meas.from, J_transpose_J(0, 0));
+        H_triplets.emplace_back(meas.from, meas.from + 1, J_transpose_J(0, 1));
+        H_triplets.emplace_back(meas.from, meas.from + 2, J_transpose_J(0, 2));
+        H_triplets.emplace_back(meas.from, meas.from + 3, J_transpose_J(0, 3));
+        H_triplets.emplace_back(meas.from, meas.from + 4, J_transpose_J(0, 4));
+        H_triplets.emplace_back(meas.from, meas.from + 5, J_transpose_J(0, 5));
 
         // Fill b
-        b(meas.from) += J_from.transpose() * e;
-        b(meas.to) += J_to.transpose() * e;
+        b.block<6, 1>(meas.from, 0) += J_transpose_e;
+        b.block<6, 1>(meas.to, 0) += -J_transpose_e;
 
         // Compute error
         chi_square += e.squaredNorm();
@@ -111,6 +127,8 @@ State Solver::solveWithGaussNewton(const State &state,
     // Compute Hessian and gradient
     const auto [H, b, current_chi] =
         buildLinearSystem(optimized_state, measurements);
+
+    exit(0);
 
     // Compute Gauss-Newton Direction
     _computeGaussNewtonSolution(H, b, iter == 0);
@@ -350,4 +368,3 @@ double Solver::_stopTimer() {
 }
 
 } // namespace optilib
-*/

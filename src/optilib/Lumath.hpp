@@ -6,19 +6,13 @@ namespace optilib {
 
 Eigen::Matrix2d rotationDerivative(const Eigen::Rotation2Dd &R);
 
-inline Eigen::Vector4d flatten(const Eigen::Matrix2d &M) {
-  return M.reshaped();
-};
-
-inline Eigen::Vector4d flatten(const Eigen::Rotation2Dd &R) {
-  return flatten(R.toRotationMatrix());
-}
-
 inline Eigen::VectorXd flatten(const Eigen::Matrix4d &T) {
-  return T.reshaped();
+  return T.block<3, 4>(0, 0).reshaped();
 }
 
 Eigen::Matrix4d v2T(const Eigen::VectorXd &v);
+
+Eigen::Matrix3d skew(const Eigen::Vector3d &v);
 
 // Rotation matrices functions
 Eigen::Matrix3d Rx(const double &angle);

@@ -34,8 +34,6 @@ public:
     return _T_matrices.at(idx);
   }
 
-  friend std::ostream &operator<<(std::ostream &os, const State &state);
-
   // Static methods
   static std::tuple<State, std::vector<Measurement>>
   generateStateAndMeasurements(const int state_size, const int n_closures);

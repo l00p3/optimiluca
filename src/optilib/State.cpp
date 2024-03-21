@@ -1,6 +1,5 @@
 #include "Lumath.hpp"
 #include <algorithm>
-#include <iostream>
 #include <numeric>
 #include <random>
 #include <ranges>
@@ -53,15 +52,6 @@ double State::norm() const {
    */
   /*                     })); */
   return 0.0; // TODO
-}
-
-std::ostream &operator<<(std::ostream &os, const State &state) {
-  std::ranges::for_each(state._T_matrices, [&](const Eigen::MatrixXd &T) {
-    // Convert to degrees
-    // TODO
-    /* os << R.smallestPositiveAngle() * (180 / pi) << " "; */
-  });
-  return os;
 }
 
 // ---------- STATIC METHODS ----------

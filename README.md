@@ -16,4 +16,4 @@ make run
  - Current Average Iteration Execution Time (1000 states, 1000 closures): 0.025 sec
 
 ## TODO
- - SE(3) states
+ - The state generator generates transformations matrices without translational part (all 0)
