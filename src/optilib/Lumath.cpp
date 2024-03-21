@@ -1,8 +1,20 @@
 #include "Lumath.hpp"
 
+namespace optilib {
+
 Eigen::Matrix2d rotationDerivative(const Eigen::Rotation2Dd &R) {
   const double &angle = R.angle();
   return Eigen::Matrix2d{{-sin(angle), -cos(angle)}, {cos(angle), -sin(angle)}};
+}
+
+Eigen::Matrix4d v2T(const Eigen::VectorXd &v) {
+  const Eigen::Vector3d &v_angles = v.tail(3);
+  const double v_angles_norm = v_angles.norm();
+  Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
+  T.block<3, 3>(0, 0) = Eigen::Matrix3d(
+      Eigen::AngleAxisd(v_angles_norm, v_angles / v_angles_norm));
+  T.block<3, 1>(0, 3) = v.head(3);
+  return T;
 }
 
 Eigen::Matrix3d Rx(const double &angle) {
@@ -54,3 +66,5 @@ Eigen::Matrix4d T_inverse(const Eigen::Matrix4d &T) {
   T_inverse.block<3, 3>(0, 0) = T.block<3, 3>(0, 0).transpose();
   return T_inverse;
 }
+
+} // namespace optilib

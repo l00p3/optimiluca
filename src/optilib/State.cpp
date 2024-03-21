@@ -22,12 +22,12 @@ State::State(const size_t size) {
 // ---------- METHODS ----------
 State State::boxPlus(const Eigen::VectorXd &dx) const {
   State new_state(this->size());
-  // TODO
-  /* auto zipped = std::views::zip(new_state._rotations, _rotations, dx); */
-  /* std::ranges::for_each(zipped, [](const auto &rotations_zipped) { */
-  /*   auto &[R_new, R, dtheta] = rotations_zipped; */
-  /*   R_new = Eigen::Rotation2Dd(dtheta) * R; */
-  /* }); */
+  std::ranges::for_each(
+      std::views::enumerate(this->_T_matrices).cbegin(),
+      std::views::enumerate(this->_T_matrices).cend(), [&](const auto &idx_T) {
+        const auto &[idx, T] = idx_T;
+        new_state._T_matrices[idx] = v2T(dx.block<6, 1>(idx * 6, 0)) * T;
+      });
   return new_state;
 }
 

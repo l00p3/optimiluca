@@ -2,6 +2,8 @@
 
 #include <eigen3/Eigen/Dense>
 
+namespace optilib {
+
 Eigen::Matrix2d rotationDerivative(const Eigen::Rotation2Dd &R);
 
 inline Eigen::Vector4d flatten(const Eigen::Matrix2d &M) {
@@ -11,6 +13,12 @@ inline Eigen::Vector4d flatten(const Eigen::Matrix2d &M) {
 inline Eigen::Vector4d flatten(const Eigen::Rotation2Dd &R) {
   return flatten(R.toRotationMatrix());
 }
+
+inline Eigen::VectorXd flatten(const Eigen::Matrix4d &T) {
+  return T.reshaped();
+}
+
+Eigen::Matrix4d v2T(const Eigen::VectorXd &v);
 
 // Rotation matrices functions
 Eigen::Matrix3d Rx(const double &angle);
@@ -26,3 +34,5 @@ Eigen::Matrix3d Ry_der_0();
 Eigen::Matrix3d Rz_der_0();
 
 Eigen::Matrix4d T_inverse(const Eigen::Matrix4d &T);
+
+} // namespace optilib
