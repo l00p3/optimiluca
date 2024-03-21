@@ -1,3 +1,4 @@
+#include "Lumath.hpp"
 #include <algorithm>
 #include <iostream>
 #include <numeric>
@@ -10,55 +11,55 @@
 using namespace std::numbers;
 
 namespace optilib {
-State::State(const std::vector<double> &angles) {
-  _rotations.reserve(angles.size());
-  std::ranges::for_each(
-      angles, [&](const double &theta) { _rotations.emplace_back(theta); });
-}
-
-State::State(std::vector<Eigen::Rotation2Dd> &&rotations) {
-  _rotations = std::move(rotations);
+State::State(std::vector<Eigen::Matrix4d> &&T_matrices) {
+  _T_matrices = std::move(T_matrices);
 }
 
 State::State(const size_t size) {
-  _rotations = std::vector<Eigen::Rotation2Dd>(size, Eigen::Rotation2Dd(0.0));
+  _T_matrices = std::vector<Eigen::Matrix4d>(size, Eigen::Matrix4d::Identity());
 }
 
 // ---------- METHODS ----------
 State State::boxPlus(const Eigen::VectorXd &dx) const {
   State new_state(this->size());
-  auto zipped = std::views::zip(new_state._rotations, _rotations, dx);
-  std::ranges::for_each(zipped, [](const auto &rotations_zipped) {
-    auto &[R_new, R, dtheta] = rotations_zipped;
-    R_new = Eigen::Rotation2Dd(dtheta) * R;
-  });
+  // TODO
+  /* auto zipped = std::views::zip(new_state._rotations, _rotations, dx); */
+  /* std::ranges::for_each(zipped, [](const auto &rotations_zipped) { */
+  /*   auto &[R_new, R, dtheta] = rotations_zipped; */
+  /*   R_new = Eigen::Rotation2Dd(dtheta) * R; */
+  /* }); */
   return new_state;
 }
 
 double State::distance(const State &other) const {
   // L1-norm of the angles distance
-  return std::transform_reduce(
-      this->_rotations.cbegin(), this->_rotations.cend(),
-      other._rotations.cbegin(), 0.0, std::plus<double>(),
-      [&](const Eigen::Rotation2Dd &R1, const Eigen::Rotation2Dd &R2) {
-        return std::abs(R1.smallestPositiveAngle() -
-                        R2.smallestPositiveAngle());
-      });
+  /* return std::transform_reduce( */
+  /*     this->_rotations.cbegin(), this->_rotations.cend(), */
+  /*     other._rotations.cbegin(), 0.0, std::plus<double>(), */
+  /*     [&](const Eigen::Rotation2Dd &R1, const Eigen::Rotation2Dd &R2) { */
+  /*       return std::abs(R1.smallestPositiveAngle() - */
+  /*                       R2.smallestPositiveAngle()); */
+  /*     }); */
+  return 0.0; // TODO
 }
 
 // ---------- OPERATORS ----------
 double State::norm() const {
-  return std::sqrt(
-      std::accumulate(_rotations.cbegin(), _rotations.cend(), 0.0,
-                      [&](const double &val, const Eigen::Rotation2Dd &R) {
-                        return val + R.smallestAngle() * R.smallestAngle();
-                      }));
+  /* return std::sqrt( */
+  /*     std::accumulate(_rotations.cbegin(), _rotations.cend(), 0.0, */
+  /*                     [&](const double &val, const Eigen::Rotation2Dd &R) {
+   */
+  /*                       return val + R.smallestAngle() * R.smallestAngle();
+   */
+  /*                     })); */
+  return 0.0; // TODO
 }
 
 std::ostream &operator<<(std::ostream &os, const State &state) {
-  std::ranges::for_each(state._rotations, [&](const Eigen::Rotation2Dd &R) {
+  std::ranges::for_each(state._T_matrices, [&](const Eigen::MatrixXd &T) {
     // Convert to degrees
-    os << R.smallestPositiveAngle() * (180 / pi) << " ";
+    // TODO
+    /* os << R.smallestPositiveAngle() * (180 / pi) << " "; */
   });
   return os;
 }
@@ -71,27 +72,40 @@ State::generateStateAndMeasurements(const int state_size,
   /* std::random_device rd; */
   std::mt19937 mt(45); // TODO: fixed seed
   std::uniform_real_distribution<double> angles_generator(0.0, 2 * pi);
+  std::normal_distribution<double> vector_generator(0.0, 1.0);
   std::uniform_int_distribution<int> ids_generator(0, state_size - 1);
 
   // Initialize vector of angles and measurements
-  std::vector<Eigen::Rotation2Dd> rotations(state_size,
-                                            Eigen::Rotation2Dd(0.0));
+  std::vector<Eigen::Matrix4d> T_matrices(state_size,
+                                          Eigen::Matrix4d::Identity());
   std::vector<Measurement> measurements;
   measurements.reserve((state_size - 1) + n_closures);
 
+  // Rotation generator
+  auto rotation_generator = [&]() {
+    Eigen::Vector3d rotation_axis(
+        {vector_generator(mt), vector_generator(mt), vector_generator(mt)});
+    rotation_axis.normalize();
+    return Eigen::Matrix3d(
+        Eigen::AngleAxisd(angles_generator(mt), rotation_axis));
+  };
+
   // Generate random rotations: STATE
-  std::ranges::for_each(
-      rotations.begin() + 1, rotations.end(), [&](Eigen::Rotation2Dd &R) {
-        R = std::move(Eigen::Rotation2Dd(angles_generator(mt)));
-      });
+  std::ranges::for_each(T_matrices.begin() + 1, T_matrices.end(),
+                        [&](Eigen::Matrix4d &T) {
+                          // Generate rotation
+                          T.block<3, 3>(0, 0) = rotation_generator();
+                          // Generate translation // TODO
+                          T.block<3, 1>(0, 3) = Eigen::Vector3d::Zero();
+                        });
 
   // Generate pose to pose MEASUREMENTS
-  std::ranges::for_each(std::views::enumerate(rotations).cbegin(),
-                        std::views::enumerate(rotations).cend() - 1,
-                        [&](const auto &idx_R) {
-                          const auto &[idx, R] = idx_R;
+  std::ranges::for_each(std::views::enumerate(T_matrices).cbegin(),
+                        std::views::enumerate(T_matrices).cend() - 1,
+                        [&](const auto &idx_T) {
+                          const auto &[idx, T] = idx_T;
                           measurements.emplace_back(
-                              R.inverse() * rotations[idx + 1], idx, idx + 1);
+                              T_inverse(T) * T_matrices[idx + 1], idx, idx + 1);
                         });
 
   // Generate the CLOSURES
@@ -105,12 +119,12 @@ State::generateStateAndMeasurements(const int state_size,
         while (from == to) {
           to = ids_generator(mt);
         }
-        measurements.emplace_back(rotations[from].inverse() * rotations[to],
+        measurements.emplace_back(T_inverse(T_matrices[from]) * T_matrices[to],
                                   from, to);
       });
 
   // Return the state and measurements
-  return {State(std::move(rotations)), measurements};
+  return {State(std::move(T_matrices)), measurements};
 }
 
 } // namespace optilib

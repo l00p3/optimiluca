@@ -19,16 +19,20 @@ int main(int argc, char **argv) {
   auto [ground_truth, measurements] = State::generateStateAndMeasurements(
       cli_args.state_size, cli_args.n_closures);
 
+  std::cout << ground_truth(3) << std::endl;
+  exit(0);
+
   // Define the initial guess at 0
   State state(cli_args.state_size);
 
   // Optimize
-  if (cli_args.use_dogleg)
-    state = solver.solveWithDogLeg(state, measurements, cli_args.max_iters,
-                                   cli_args.verbose);
-  else
-    state = solver.solveWithGaussNewton(state, measurements, cli_args.max_iters,
-                                        cli_args.verbose);
+  /* if (cli_args.use_dogleg) */
+  /*   state = solver.solveWithDogLeg(state, measurements, cli_args.max_iters,
+   */
+  /*                                  cli_args.verbose); */
+  /* else */
+  state = solver.solveWithGaussNewton(state, measurements, cli_args.max_iters,
+                                      cli_args.verbose);
 
   std::cout << std::endl
             << "Final angles error: " << state.distance(ground_truth)

@@ -8,6 +8,7 @@
 #include "Lumath.hpp"
 #include "Solver.hpp"
 #include "State.hpp"
+/*
 
 // --- Utility functions in unnamed namespace ---
 namespace {
@@ -349,3 +350,4 @@ double Solver::_stopTimer() {
 }
 
 } // namespace optilib
+*/
