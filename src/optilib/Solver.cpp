@@ -46,7 +46,7 @@ computeErrorAndJacobian(const State &state, const Measurement &meas) {
   J.block<9, 1>(0, 3) = (R_from_transpose * Rx_der_0() * R_to).reshaped();
   J.block<9, 1>(0, 4) = (R_from_transpose * Ry_der_0() * R_to).reshaped();
   J.block<9, 1>(0, 5) = (R_from_transpose * Rz_der_0() * R_to).reshaped();
-  J.block<3, 3>(9, 0) = R_from_transpose * 10;
+  J.block<3, 3>(9, 0) = R_from_transpose;
   J.block<3, 3>(9, 3) = -R_from_transpose * skew(t_to);
 
   return {error, J};
@@ -62,14 +62,14 @@ LinearSystem buildLinearSystem(const State &state,
   double chi_square = 0.0;
 
   // Fill the linear system
-  H_triplets.reserve((measurements.size() * 36) * 4 + 1);
+  H_triplets.reserve((measurements.size() * 36 * 4) + 1);
   std::for_each(
       measurements.cbegin(), measurements.cend(), [&](const Measurement &meas) {
         // Compute the error and jacobian
         const auto [e, J] = computeErrorAndJacobian(state, meas);
-        Eigen::VectorXd J_transpose_J =
+        const Eigen::VectorXd J_transpose_J =
             (J.transpose() * J).reshaped(); // Vectorized for easier loop
-        Eigen::VectorXd J_transpose_e = J.transpose() * e;
+        const Eigen::VectorXd J_transpose_e = J.transpose() * e;
 
         // Fill Hessian
         std::ranges::for_each(
@@ -88,16 +88,18 @@ LinearSystem buildLinearSystem(const State &state,
             });
 
         // Fill b
-        b.block<6, 1>(meas.from, 0) += J_transpose_e;
-        b.block<6, 1>(meas.to, 0) += -J_transpose_e;
+        b.block<6, 1>(meas.from * 6, 0) += J_transpose_e;
+        b.block<6, 1>(meas.to * 6, 0) += -J_transpose_e;
 
         // Compute error
         chi_square += e.squaredNorm();
       });
 
   // Fix the first state by assigning a very high certainty and b(0) = 0
-  H_triplets.emplace_back(0, 0, 1e20);
-  b(0) = 0.0;
+  for (int i = 0; i < 6; i++) {
+    H_triplets.emplace_back(i, i, 1e200);
+    b(i) = 0.0;
+  }
 
   // Build the sparse system
   H.setFromTriplets(H_triplets.begin(), H_triplets.end());

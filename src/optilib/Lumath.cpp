@@ -10,9 +10,9 @@ Eigen::Matrix2d rotationDerivative(const Eigen::Rotation2Dd &R) {
 Eigen::Matrix4d v2T(const Eigen::VectorXd &v) {
   Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
   T.block<3, 3>(0, 0) =
-      Eigen::Matrix3d(Eigen::AngleAxisd(v(0), Eigen::Vector3d::UnitX()) *
-                      Eigen::AngleAxisd(v(1), Eigen::Vector3d::UnitY()) *
-                      Eigen::AngleAxisd(v(2), Eigen::Vector3d::UnitZ()));
+      Eigen::Matrix3d(Eigen::AngleAxisd(v(3), Eigen::Vector3d::UnitX()) *
+                      Eigen::AngleAxisd(v(4), Eigen::Vector3d::UnitY()) *
+                      Eigen::AngleAxisd(v(5), Eigen::Vector3d::UnitZ()));
   T.block<3, 1>(0, 3) = v.head(3);
   return T;
 }

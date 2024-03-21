@@ -63,7 +63,8 @@ State::generateStateAndMeasurements(const int state_size,
   /* std::random_device rd; */
   std::mt19937 mt(45); // TODO: fixed seed
   std::uniform_real_distribution<double> angles_generator(0.0, 2 * pi);
-  std::normal_distribution<double> vector_generator(0.0, 1.0);
+  std::normal_distribution<double> unit_vector_generator(0.0, 1.0);
+  std::uniform_real_distribution<double> vector_generator(-10.0, 10.0);
   std::uniform_int_distribution<int> ids_generator(0, state_size - 1);
 
   // Initialize vector of angles and measurements
@@ -74,11 +75,18 @@ State::generateStateAndMeasurements(const int state_size,
 
   // Rotation generator
   auto rotation_generator = [&]() {
-    Eigen::Vector3d rotation_axis(
-        {vector_generator(mt), vector_generator(mt), vector_generator(mt)});
+    Eigen::Vector3d rotation_axis({unit_vector_generator(mt),
+                                   unit_vector_generator(mt),
+                                   unit_vector_generator(mt)});
     rotation_axis.normalize();
     return Eigen::Matrix3d(
         Eigen::AngleAxisd(angles_generator(mt), rotation_axis));
+  };
+
+  // Vector generator
+  auto vector3d_generator = [&]() {
+    return Eigen::Vector3d(
+        {vector_generator(mt), vector_generator(mt), vector_generator(mt)});
   };
 
   // Generate random rotations: STATE
@@ -86,8 +94,8 @@ State::generateStateAndMeasurements(const int state_size,
                         [&](Eigen::Matrix4d &T) {
                           // Generate rotation
                           T.block<3, 3>(0, 0) = rotation_generator();
-                          // Generate translation // TODO
-                          T.block<3, 1>(0, 3) = Eigen::Vector3d::Zero();
+                          // Generate translation
+                          T.block<3, 1>(0, 3) = vector3d_generator();
                         });
 
   // Generate pose to pose MEASUREMENTS
