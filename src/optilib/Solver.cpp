@@ -67,24 +67,25 @@ LinearSystem buildLinearSystem(const State &state,
       measurements.cbegin(), measurements.cend(), [&](const Measurement &meas) {
         // Compute the error and jacobian
         const auto [e, J] = computeErrorAndJacobian(state, meas);
-        exit(0);
-
-        Eigen::VectorXd J_transpose_J = (J.transpose() * J).reshaped();
+        Eigen::VectorXd J_transpose_J =
+            (J.transpose() * J).reshaped(); // Vectorized for easier loop
         Eigen::VectorXd J_transpose_e = J.transpose() * e;
 
         // Fill Hessian
-        std::ranges::for_each(std::views::enumerate(J_transpose_J),
-                              [&](const auto &idx_val) {
-                                const auto &[idx, val] = idx_val;
-                                H_triplets.emplace_back(0, 0, val);
-                              });
-
-        H_triplets.emplace_back(meas.from, meas.from, J_transpose_J(0, 0));
-        H_triplets.emplace_back(meas.from, meas.from + 1, J_transpose_J(0, 1));
-        H_triplets.emplace_back(meas.from, meas.from + 2, J_transpose_J(0, 2));
-        H_triplets.emplace_back(meas.from, meas.from + 3, J_transpose_J(0, 3));
-        H_triplets.emplace_back(meas.from, meas.from + 4, J_transpose_J(0, 4));
-        H_triplets.emplace_back(meas.from, meas.from + 5, J_transpose_J(0, 5));
+        std::ranges::for_each(
+            std::views::enumerate(J_transpose_J), [&](const auto &idx_val) {
+              const auto &[idx, val] = idx_val;
+              const int J_row = idx % 6; // from vec to matrix position
+              const int J_col = idx / 6;
+              H_triplets.emplace_back((meas.from * 6) + J_row,
+                                      (meas.from * 6) + J_col, val);
+              H_triplets.emplace_back((meas.from * 6) + J_row,
+                                      (meas.to * 6) + J_col, -val);
+              H_triplets.emplace_back((meas.to * 6) + J_row,
+                                      (meas.from * 6) + J_col, -val);
+              H_triplets.emplace_back((meas.to * 6) + J_row,
+                                      (meas.to * 6) + J_col, val);
+            });
 
         // Fill b
         b.block<6, 1>(meas.from, 0) += J_transpose_e;
@@ -119,6 +120,9 @@ State Solver::solveWithGaussNewton(const State &state,
   double current_chi = 0.0;
   this->_startTimer(n_iters);
 
+  if (verbose)
+    this->_printStart();
+
   // For each iteration
   for (int iter = 0; iter < n_iters; ++iter) {
     // Execution time
@@ -127,8 +131,6 @@ State Solver::solveWithGaussNewton(const State &state,
     // Compute Hessian and gradient
     const auto [H, b, current_chi] =
         buildLinearSystem(optimized_state, measurements);
-
-    exit(0);
 
     // Compute Gauss-Newton Direction
     _computeGaussNewtonSolution(H, b, iter == 0);
@@ -173,6 +175,9 @@ State Solver::solveWithDogLeg(const State &state,
   // Initialize direction vectors sizes
   this->_h_gn = Eigen::VectorXd::Zero(state_size);
   this->_alpha_h_sd = Eigen::VectorXd::Zero(state_size);
+
+  if (verbose)
+    this->_printStart();
 
   // For each iteration
   for (int iter = 0; iter < n_iters; ++iter) {

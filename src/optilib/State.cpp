@@ -1,5 +1,6 @@
 #include "Lumath.hpp"
 #include <algorithm>
+#include <iostream>
 #include <numeric>
 #include <random>
 #include <ranges>
@@ -39,7 +40,7 @@ double State::distance(const State &other) const {
   /*       return std::abs(R1.smallestPositiveAngle() - */
   /*                       R2.smallestPositiveAngle()); */
   /*     }); */
-  return 0.0; // TODO
+  return 123456; // TODO
 }
 
 // ---------- OPERATORS ----------
