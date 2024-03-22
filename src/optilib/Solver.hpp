@@ -5,7 +5,6 @@
 #include <chrono>
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Sparse>
-#include <eigen3/Eigen/src/SparseCholesky/SimplicialCholesky.h>
 
 namespace optilib {
 
@@ -30,7 +29,8 @@ private:
                             const std::vector<Measurement> &measurements,
                             const int iter);
   void _computeGaussNewtonSolution(const Eigen::SparseMatrix<double> &H,
-                                   const Eigen::VectorXd &b);
+                                   const Eigen::VectorXd &b,
+                                   const bool compute_sparse_solver);
   void _computeCauchyPoint(const Eigen::SparseMatrix<double> &H,
                            const Eigen::VectorXd &b,
                            const double &b_squared_norm);
@@ -65,7 +65,7 @@ private:
   double _h_dl_norm;
   double _linear_decrease;
   double _update_ratio;
-  Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> _sparse_solver;
+  Eigen::SimplicialLLT<Eigen::SparseMatrix<double>> _sparse_solver;
 
   // --- EXECUTION TIME ATTRIBUTES ---
   std::chrono::time_point<std::chrono::high_resolution_clock> _t1, _t2;

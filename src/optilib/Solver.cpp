@@ -135,7 +135,7 @@ State Solver::solveWithGaussNewton(const State &state,
         buildLinearSystem(optimized_state, measurements);
 
     // Compute Gauss-Newton Direction
-    _computeGaussNewtonSolution(H, b);
+    _computeGaussNewtonSolution(H, b, iter == 0);
 
     // Update the state
     optimized_state = optimized_state.boxPlus(this->_h_gn);
@@ -225,7 +225,7 @@ double Solver::_computeDogLegStep(const State &state,
   const double b_norm = b.norm();
 
   // Compute Gauss-Newton Direction
-  _computeGaussNewtonSolution(H, b);
+  _computeGaussNewtonSolution(H, b, iter == 0);
   const double h_gn_norm = this->_h_gn.norm();
 
   // Compute the Cauchy point
@@ -257,8 +257,12 @@ double Solver::_computeDogLegStep(const State &state,
 }
 
 void Solver::_computeGaussNewtonSolution(const Eigen::SparseMatrix<double> &H,
-                                         const Eigen::VectorXd &b) {
-  this->_h_gn = _sparse_solver.compute(H).solve(-b);
+                                         const Eigen::VectorXd &b,
+                                         const bool compute_sparse_solver) {
+  if (compute_sparse_solver)
+    this->_sparse_solver.analyzePattern(H);
+  this->_sparse_solver.factorize(H);
+  this->_h_gn = _sparse_solver.solve(-b);
 }
 
 void Solver::_computeCauchyPoint(const Eigen::SparseMatrix<double> &H,
