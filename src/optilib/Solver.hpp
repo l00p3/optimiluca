@@ -73,7 +73,7 @@ private:
   double _h_dl_norm;
   double _linear_decrease;
   double _update_ratio;
-  Eigen::SimplicialLLT<Eigen::SparseMatrix<double>> _sparse_solver;
+  Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> _sparse_solver;
 
   // --- EXECUTION TIME ATTRIBUTES ---
   std::chrono::time_point<std::chrono::high_resolution_clock> _t1, _t2;

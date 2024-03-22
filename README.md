@@ -18,3 +18,4 @@ make run
 ## TODO
  - Implement last methods of State
  - State not with matrixces but with poses (for a better access to R and t and other operations)
+ - SuiteSparse ?

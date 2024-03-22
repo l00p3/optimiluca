@@ -58,6 +58,8 @@ LinearSystem buildLinearSystem(const State &state,
   std::vector<Eigen::Triplet<double>> H_triplets;
   Eigen::SparseMatrix<double> H(state_size * 6, state_size * 6);
   Eigen::VectorXd b = Eigen::VectorXd::Zero(state_size * 6);
+  Eigen::Vector36d J_transpose_J;
+  Eigen::Vector6d J_transpose_e;
   double chi_square = 0.0;
 
   // Fill the linear system
@@ -66,9 +68,9 @@ LinearSystem buildLinearSystem(const State &state,
       measurements.cbegin(), measurements.cend(), [&](const Measurement &meas) {
         // Compute the error and jacobian
         const auto [e, J] = computeErrorAndJacobian(state, meas);
-        const Eigen::Vector36d J_transpose_J =
+        J_transpose_J =
             (J.transpose() * J).reshaped(); // Vectorized for easier loop
-        const Eigen::Vector6d J_transpose_e = J.transpose() * e;
+        J_transpose_e = J.transpose() * e;
 
         // Fill Hessian
         std::ranges::for_each(
