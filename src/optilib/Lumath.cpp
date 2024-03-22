@@ -2,7 +2,7 @@
 
 namespace optilib {
 
-Eigen::Matrix4d v2T(const Eigen::VectorXd &v) {
+Eigen::Matrix4d v2T(const Eigen::Vector6d &v) {
   Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
   const double angle = v.template tail<3>().norm();
   const Eigen::Vector3d axis = v.template tail<3>().normalized();

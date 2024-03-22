@@ -2,13 +2,18 @@
 
 #include <eigen3/Eigen/Dense>
 
+namespace Eigen {
+using Vector6d = Vector<double, 6>;
+using Vector12d = Vector<double, 12>;
+} // namespace Eigen
+
 namespace optilib {
 
-inline Eigen::VectorXd flatten(const Eigen::Matrix4d &T) {
+inline Eigen::Vector12d flatten(const Eigen::Matrix4d &T) {
   return T.block<3, 4>(0, 0).reshaped();
 }
 
-Eigen::Matrix4d v2T(const Eigen::VectorXd &v);
+Eigen::Matrix4d v2T(const Eigen::Vector6d &v);
 
 Eigen::Matrix3d skew(const Eigen::Vector3d &v);
 

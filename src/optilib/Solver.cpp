@@ -22,13 +22,12 @@ double computeChiSquare(const State &state,
       measurements.cbegin(), measurements.cend(), 0.0,
       [&](const int chi_square, const Measurement &meas) {
         return chi_square +
-               (flatten(state(meas.from).inverse() * state(meas.to)) -
-                flatten(meas.z))
+               flatten(T_inverse(state(meas.from)) * state(meas.to) - meas.z)
                    .squaredNorm();
       });
 }
 
-std::tuple<Eigen::VectorXd, Eigen::MatrixXd>
+std::tuple<Eigen::Vector12d, Eigen::Matrix12_6d>
 computeErrorAndJacobian(const State &state, const Measurement &meas) {
 
   // Initialize some reference for readability
@@ -38,11 +37,11 @@ computeErrorAndJacobian(const State &state, const Measurement &meas) {
   const Eigen::Vector3d &t_to = state(meas.to).block<3, 1>(0, 3);
 
   // Compute the error
-  Eigen::VectorXd error =
+  Eigen::Vector12d error =
       flatten(T_inverse(state(meas.from)) * state(meas.to) - meas.z);
 
   // Compute the Jacobian
-  Eigen::MatrixXd J = Eigen::MatrixXd::Zero(12, 6);
+  Eigen::Matrix12_6d J = Eigen::Matrix12_6d::Zero(12, 6);
   J.block<9, 1>(0, 3) = (R_from_transpose * Rx_der_0() * R_to).reshaped();
   J.block<9, 1>(0, 4) = (R_from_transpose * Ry_der_0() * R_to).reshaped();
   J.block<9, 1>(0, 5) = (R_from_transpose * Rz_der_0() * R_to).reshaped();
@@ -67,9 +66,9 @@ LinearSystem buildLinearSystem(const State &state,
       measurements.cbegin(), measurements.cend(), [&](const Measurement &meas) {
         // Compute the error and jacobian
         const auto [e, J] = computeErrorAndJacobian(state, meas);
-        const Eigen::VectorXd J_transpose_J =
+        const Eigen::Vector36d J_transpose_J =
             (J.transpose() * J).reshaped(); // Vectorized for easier loop
-        const Eigen::VectorXd J_transpose_e = J.transpose() * e;
+        const Eigen::Vector6d J_transpose_e = J.transpose() * e;
 
         // Fill Hessian
         std::ranges::for_each(

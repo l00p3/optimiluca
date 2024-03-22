@@ -16,4 +16,5 @@ make run
  - Current Average Iteration Execution Time (1000 states, 1000 closures): 0.025 sec
 
 ## TODO
-  - Vector and Matrices size at compile time
+ - Implement last methods of State
+ - State not with matrixces but with poses (for a better access to R and t and other operations)

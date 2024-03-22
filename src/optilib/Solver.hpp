@@ -6,6 +6,14 @@
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Sparse>
 
+// Some rename of Eigen matrices
+namespace Eigen {
+using Vector6d = Vector<double, 6>;
+using Vector12d = Vector<double, 12>;
+using Vector36d = Vector<double, 36>;
+using Matrix12_6d = Matrix<double, 12, 6>;
+} // namespace Eigen
+
 namespace optilib {
 
 class Solver {
