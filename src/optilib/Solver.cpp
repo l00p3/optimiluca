@@ -35,29 +35,25 @@ double computeChiSquare(const State &state,
 
 std::tuple<Eigen::VectorXd, Eigen::MatrixXd>
 computeErrorAndJacobian(const State &state, const Measurement &meas) {
-  auto skew = [](const Eigen::Vector3d &v) {
-    Eigen::Matrix3d S;
-    S << 0, -v(2), v(1), v(2), 0, -v(0), -v(1), v(0), 0;
-    return S;
-  };
-  const auto &Ti = state(meas.from);
-  const auto &Tj = state(meas.to);
-  const auto Ri_transpose = Ti.block<3, 3>(0, 0).transpose();
-  const auto &Rj = Tj.block<3, 3>(0, 0);
-  const Eigen::Matrix4d error_se3 = Ti.inverse() * Tj - meas.z;
-  const Eigen::Matrix<double, 12, 1> e = error_se3.block<3, 4>(0, 0).reshaped();
-  Eigen::Matrix<double, 12, 6> J;
-  J.setZero();
-  J.block<9, 1>(0, 3) =
-      (Ri_transpose * skew(Eigen::Vector3d::UnitX()) * Rj).reshaped();
-  J.block<9, 1>(0, 4) =
-      (Ri_transpose * skew(Eigen::Vector3d::UnitY()) * Rj).reshaped();
-  J.block<9, 1>(0, 5) =
-      (Ri_transpose * skew(Eigen::Vector3d::UnitZ()) * Rj).reshaped();
+  // Initialize some reference for readability
+  const Eigen::Matrix3d R_from_transpose =
+      state(meas.from).block<3, 3>(0, 0).transpose();
+  const Eigen::Matrix3d &R_to = state(meas.to).block<3, 3>(0, 0);
+  const Eigen::Vector3d &t_to = state(meas.to).block<3, 1>(0, 3);
 
-  J.block<3, 3>(9, 0) = Ri_transpose;
-  J.block<3, 3>(9, 3) = -Ri_transpose * skew(Tj.block<3, 1>(0, 3));
-  return {e, J};
+  // Compute the error
+  Eigen::VectorXd error =
+      flatten(T_inverse(state(meas.from)) * state(meas.to) - meas.z);
+
+  // Compute the Jacobian
+  Eigen::MatrixXd J = Eigen::MatrixXd::Zero(12, 6);
+  J.block<9, 1>(0, 3) = (R_from_transpose * Rx_der_0() * R_to).reshaped();
+  J.block<9, 1>(0, 4) = (R_from_transpose * Ry_der_0() * R_to).reshaped();
+  J.block<9, 1>(0, 5) = (R_from_transpose * Rz_der_0() * R_to).reshaped();
+  J.block<3, 3>(9, 0) = R_from_transpose;
+  J.block<3, 3>(9, 3) = -R_from_transpose * skew(t_to);
+
+  return {error, J};
 }
 
 LinearSystem buildLinearSystem(const State &state,
@@ -94,8 +90,8 @@ LinearSystem buildLinearSystem(const State &state,
                   H.block<6, 6>(meas.to * 6, meas.to * 6) += J_transpose_J;
 
                   // Fill b
-                  b.segment<6>(meas.from * 6) += J_transpose_e;
-                  b.segment<6>(meas.to * 6) -= J_transpose_e;
+                  b.segment<6>(meas.from * 6) -= J_transpose_e;
+                  b.segment<6>(meas.to * 6) += J_transpose_e;
 
                   // Compute error
                   chi_square += e.squaredNorm();
@@ -109,9 +105,8 @@ LinearSystem buildLinearSystem(const State &state,
   fill_block(0, 0, 1e200 * Eigen::Matrix6d::Identity());
   /* // Build the sparse system */
   /* H.setFromTriplets(H_triplets.begin(), H_triplets.end()); */
-  std::cout << H << std::endl;
 
-  return {H, -b, chi_square};
+  return {H, b, chi_square};
 }
 
 } // namespace
