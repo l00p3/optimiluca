@@ -98,7 +98,7 @@ LinearSystem buildLinearSystem(const State &state,
   // Fix the first state by assigning a very high certainty and b(0) = 0
   for (int i = 0; i < 6; i++) {
     H_triplets.emplace_back(i, i, 1e200);
-    // TODO set b to 0?
+    b(i) = 0.0;
   }
 
   // Build the sparse system
