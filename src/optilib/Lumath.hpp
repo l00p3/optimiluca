@@ -4,8 +4,6 @@
 
 namespace optilib {
 
-Eigen::Matrix2d rotationDerivative(const Eigen::Rotation2Dd &R);
-
 inline Eigen::VectorXd flatten(const Eigen::Matrix4d &T) {
   return T.block<3, 4>(0, 0).reshaped();
 }

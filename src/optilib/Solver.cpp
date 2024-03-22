@@ -54,7 +54,7 @@ computeErrorAndJacobian(const State &state, const Measurement &meas) {
 
 LinearSystem buildLinearSystem(const State &state,
                                const std::vector<Measurement> &measurements) {
-  // Initialization
+  // Initializatio-n
   const size_t state_size = state.size();
   std::vector<Eigen::Triplet<double>> H_triplets;
   Eigen::SparseMatrix<double> H(state_size * 6, state_size * 6);
@@ -88,8 +88,8 @@ LinearSystem buildLinearSystem(const State &state,
             });
 
         // Fill b
-        b.block<6, 1>(meas.from * 6, 0) += J_transpose_e;
-        b.block<6, 1>(meas.to * 6, 0) += -J_transpose_e;
+        b.block<6, 1>(meas.from * 6, 0) -= J_transpose_e;
+        b.block<6, 1>(meas.to * 6, 0) += J_transpose_e;
 
         // Compute error
         chi_square += e.squaredNorm();
@@ -98,7 +98,6 @@ LinearSystem buildLinearSystem(const State &state,
   // Fix the first state by assigning a very high certainty and b(0) = 0
   for (int i = 0; i < 6; i++) {
     H_triplets.emplace_back(i, i, 1e200);
-    b(i) = 0.0;
   }
 
   // Build the sparse system

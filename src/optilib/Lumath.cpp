@@ -2,18 +2,12 @@
 
 namespace optilib {
 
-Eigen::Matrix2d rotationDerivative(const Eigen::Rotation2Dd &R) {
-  const double &angle = R.angle();
-  return Eigen::Matrix2d{{-sin(angle), -cos(angle)}, {cos(angle), -sin(angle)}};
-}
-
 Eigen::Matrix4d v2T(const Eigen::VectorXd &v) {
   Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
-  T.block<3, 3>(0, 0) =
-      Eigen::Matrix3d(Eigen::AngleAxisd(v(3), Eigen::Vector3d::UnitX()) *
-                      Eigen::AngleAxisd(v(4), Eigen::Vector3d::UnitY()) *
-                      Eigen::AngleAxisd(v(5), Eigen::Vector3d::UnitZ()));
-  T.block<3, 1>(0, 3) = v.head(3);
+  const double angle = v.template tail<3>().norm();
+  const Eigen::Vector3d axis = v.template tail<3>().normalized();
+  T.block<3, 3>(0, 0) = Eigen::AngleAxisd(angle, axis).toRotationMatrix();
+  T.block<3, 1>(0, 3) = v.template head<3>();
   return T;
 }
 
@@ -52,17 +46,11 @@ Eigen::Matrix3d Rz_der(const double &angle) {
       {{-sin(angle), -cos(angle), 0}, {cos(angle), -sin(angle), 0}, {0, 0, 0}});
 };
 
-Eigen::Matrix3d Rx_der_0() {
-  return Eigen::Matrix3d({{0, 0, 0}, {0, 0, -1}, {0, 1, 0}});
-}
+Eigen::Matrix3d Rx_der_0() { return skew(Eigen::Vector3d::UnitX()); }
 
-Eigen::Matrix3d Ry_der_0() {
-  return Eigen::Matrix3d({{0, 0, 1}, {0, 0, 0}, {-1, 0, 0}});
-};
+Eigen::Matrix3d Ry_der_0() { return skew(Eigen::Vector3d::UnitY()); }
 
-Eigen::Matrix3d Rz_der_0() {
-  return Eigen::Matrix3d({{0, -1, 0}, {1, 0, 0}, {0, 0, 0}});
-};
+Eigen::Matrix3d Rz_der_0() { return skew(Eigen::Vector3d::UnitZ()); }
 
 Eigen::Matrix4d T_inverse(const Eigen::Matrix4d &T) {
   Eigen::Matrix4d T_inverse = Eigen::Matrix4d::Identity();
