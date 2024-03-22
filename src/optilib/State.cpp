@@ -22,12 +22,11 @@ State::State(const size_t size) {
 // ---------- METHODS ----------
 State State::boxPlus(const Eigen::VectorXd &dx) const {
   State new_state(this->size());
-  std::ranges::for_each(
-      std::views::enumerate(this->_T_matrices).cbegin(),
-      std::views::enumerate(this->_T_matrices).cend(), [&](const auto &idx_T) {
-        const auto &[idx, T] = idx_T;
-        new_state._T_matrices[idx] = v2T(dx.block<6, 1>(idx * 6, 0)) * T;
-      });
+  std::ranges::for_each(std::views::enumerate(this->_T_matrices),
+                        [&](const auto &idx_T) {
+                          const auto &[idx, T] = idx_T;
+                          new_state(idx) = v2T(dx.segment<6>(idx * 6)) * T;
+                        });
   return new_state;
 }
 
