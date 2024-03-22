@@ -104,7 +104,7 @@ LinearSystem buildLinearSystem(const State &state,
   // Build the sparse system
   H.setFromTriplets(H_triplets.begin(), H_triplets.end());
 
-  return {H, b, chi_square};
+  return {H, -b, chi_square};
 }
 
 } // namespace

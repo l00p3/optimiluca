@@ -70,7 +70,7 @@ State::generateStateAndMeasurements(const int state_size,
   std::vector<Measurement> measurements;
   measurements.reserve((state_size - 1) + n_closures);
 
-  // Rotation generator
+  // Rotation generator (3D axis angle vector repesentation)
   auto rotation_generator = [&]() {
     const Eigen::Vector3d omega_vector =
         2 * pi * Eigen::Vector3d::Random().array() - pi;
