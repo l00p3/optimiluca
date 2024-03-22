@@ -32,14 +32,14 @@ std::tuple<Eigen::VectorXd, Eigen::MatrixXd>
 computeErrorAndJacobian(const State &state, const Measurement &meas) {
 
   // Initialize some reference for readability
-  const Eigen::Matrix3d &R_from = state(meas.from).block<3, 3>(0, 0);
-  const Eigen::Matrix3d R_from_transpose = R_from.transpose();
+  const Eigen::Matrix3d R_from_transpose =
+      state(meas.from).block<3, 3>(0, 0).transpose();
   const Eigen::Matrix3d &R_to = state(meas.to).block<3, 3>(0, 0);
   const Eigen::Vector3d &t_to = state(meas.to).block<3, 1>(0, 3);
 
   // Compute the error
   Eigen::VectorXd error =
-      flatten(T_inverse(state(meas.from)) * state(meas.to)) - flatten(meas.z);
+      flatten(T_inverse(state(meas.from)) * state(meas.to) - meas.z);
 
   // Compute the Jacobian
   Eigen::MatrixXd J = Eigen::MatrixXd::Zero(12, 6);
@@ -88,8 +88,8 @@ LinearSystem buildLinearSystem(const State &state,
             });
 
         // Fill b
-        b.block<6, 1>(meas.from * 6, 0) -= J_transpose_e;
-        b.block<6, 1>(meas.to * 6, 0) += J_transpose_e;
+        b.segment<6>(meas.from * 6) += J_transpose_e;
+        b.segment<6>(meas.to * 6) -= J_transpose_e;
 
         // Compute error
         chi_square += e.squaredNorm();
@@ -98,12 +98,13 @@ LinearSystem buildLinearSystem(const State &state,
   // Fix the first state by assigning a very high certainty and b(0) = 0
   for (int i = 0; i < 6; i++) {
     H_triplets.emplace_back(i, i, 1e200);
+    // TODO set b to 0?
   }
 
   // Build the sparse system
   H.setFromTriplets(H_triplets.begin(), H_triplets.end());
 
-  return {H, b, chi_square};
+  return {H, -b, chi_square};
 }
 
 } // namespace
