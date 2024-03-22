@@ -28,6 +28,11 @@ int main(int argc, char **argv) {
    */
   /*                                  cli_args.verbose); */
   /* else */
+  state = ground_truth;
+  Eigen::VectorXd dx = Eigen::VectorXd(ground_truth.size() * 6);
+  dx.setRandom();
+  dx *= 0.1;
+  state = state.boxPlus(dx);
   state = solver.solveWithGaussNewton(state, measurements, cli_args.max_iters,
                                       cli_args.verbose);
 

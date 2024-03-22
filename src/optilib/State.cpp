@@ -22,12 +22,11 @@ State::State(const size_t size) {
 // ---------- METHODS ----------
 State State::boxPlus(const Eigen::VectorXd &dx) const {
   State new_state(this->size());
-  std::ranges::for_each(
-      std::views::enumerate(this->_T_matrices).cbegin(),
-      std::views::enumerate(this->_T_matrices).cend(), [&](const auto &idx_T) {
-        const auto &[idx, T] = idx_T;
-        new_state._T_matrices[idx] = v2T(dx.block<6, 1>(idx * 6, 0)) * T;
-      });
+  std::ranges::for_each(std::views::enumerate(this->_T_matrices),
+                        [&](const auto &entry) mutable {
+                          const auto &[idx, T] = entry;
+                          new_state(idx) = v2T(dx.segment<6>(idx * 6)) * T;
+                        });
   return new_state;
 }
 
@@ -75,12 +74,11 @@ State::generateStateAndMeasurements(const int state_size,
 
   // Rotation generator
   auto rotation_generator = [&]() {
-    Eigen::Vector3d rotation_axis({unit_vector_generator(mt),
-                                   unit_vector_generator(mt),
-                                   unit_vector_generator(mt)});
-    rotation_axis.normalize();
-    return Eigen::Matrix3d(
-        Eigen::AngleAxisd(angles_generator(mt), rotation_axis));
+    const Eigen::Vector3d omega =
+        2 * pi * Eigen::Vector3d::Random().array() - pi;
+    const double angle = omega.norm();
+    const Eigen::Vector3d u = omega.normalized();
+    return Eigen::Matrix3d(Eigen::AngleAxisd(angle, u));
   };
 
   // Vector generator

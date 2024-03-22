@@ -1,4 +1,6 @@
+#include <algorithm>
 #include <cmath>
+#include <eigen3/Eigen/Core>
 #include <iostream>
 #include <numeric>
 #include <ranges>
@@ -9,12 +11,15 @@
 #include "Solver.hpp"
 #include "State.hpp"
 
+namespace Eigen {
+using Matrix6d = Matrix<double, 6, 6>;
+using Vector6d = Matrix<double, 6, 1>;
+} // namespace Eigen
 // --- Utility functions in unnamed namespace ---
 namespace {
 using namespace optilib;
 
-using LinearSystem =
-    std::tuple<Eigen::SparseMatrix<double>, Eigen::VectorXd, double>;
+using LinearSystem = std::tuple<Eigen::MatrixXd, Eigen::VectorXd, double>;
 
 double computeChiSquare(const State &state,
                         const std::vector<Measurement> &measurements) {
@@ -30,26 +35,29 @@ double computeChiSquare(const State &state,
 
 std::tuple<Eigen::VectorXd, Eigen::MatrixXd>
 computeErrorAndJacobian(const State &state, const Measurement &meas) {
+  auto skew = [](const Eigen::Vector3d &v) {
+    Eigen::Matrix3d S;
+    S << 0, -v(2), v(1), v(2), 0, -v(0), -v(1), v(0), 0;
+    return S;
+  };
+  const auto &Ti = state(meas.from);
+  const auto &Tj = state(meas.to);
+  const auto Ri_transpose = Ti.block<3, 3>(0, 0).transpose();
+  const auto &Rj = Tj.block<3, 3>(0, 0);
+  const Eigen::Matrix4d error_se3 = Ti.inverse() * Tj - meas.z;
+  const Eigen::Matrix<double, 12, 1> e = error_se3.block<3, 4>(0, 0).reshaped();
+  Eigen::Matrix<double, 12, 6> J;
+  J.setZero();
+  J.block<9, 1>(0, 3) =
+      (Ri_transpose * skew(Eigen::Vector3d::UnitX()) * Rj).reshaped();
+  J.block<9, 1>(0, 4) =
+      (Ri_transpose * skew(Eigen::Vector3d::UnitY()) * Rj).reshaped();
+  J.block<9, 1>(0, 5) =
+      (Ri_transpose * skew(Eigen::Vector3d::UnitZ()) * Rj).reshaped();
 
-  // Initialize some reference for readability
-  const Eigen::Matrix3d &R_from = state(meas.from).block<3, 3>(0, 0);
-  const Eigen::Matrix3d R_from_transpose = R_from.transpose();
-  const Eigen::Matrix3d &R_to = state(meas.to).block<3, 3>(0, 0);
-  const Eigen::Vector3d &t_to = state(meas.to).block<3, 1>(0, 3);
-
-  // Compute the error
-  Eigen::VectorXd error =
-      flatten(T_inverse(state(meas.from)) * state(meas.to)) - flatten(meas.z);
-
-  // Compute the Jacobian
-  Eigen::MatrixXd J = Eigen::MatrixXd::Zero(12, 6);
-  J.block<9, 1>(0, 3) = (R_from_transpose * Rx_der_0() * R_to).reshaped();
-  J.block<9, 1>(0, 4) = (R_from_transpose * Ry_der_0() * R_to).reshaped();
-  J.block<9, 1>(0, 5) = (R_from_transpose * Rz_der_0() * R_to).reshaped();
-  J.block<3, 3>(9, 0) = R_from_transpose;
-  J.block<3, 3>(9, 3) = -R_from_transpose * skew(t_to);
-
-  return {error, J};
+  J.block<3, 3>(9, 0) = Ri_transpose;
+  J.block<3, 3>(9, 3) = -Ri_transpose * skew(Tj.block<3, 1>(0, 3));
+  return {e, J};
 }
 
 LinearSystem buildLinearSystem(const State &state,
@@ -57,54 +65,53 @@ LinearSystem buildLinearSystem(const State &state,
   // Initialization
   const size_t state_size = state.size();
   std::vector<Eigen::Triplet<double>> H_triplets;
-  Eigen::SparseMatrix<double> H(state_size * 6, state_size * 6);
+  /* Eigen::SparseMatrix<double> H(state_size * 6, state_size * 6); */
+  Eigen::MatrixXd H(state_size * 6, state_size * 6);
+  H.setZero();
   Eigen::VectorXd b = Eigen::VectorXd::Zero(state_size * 6);
   double chi_square = 0.0;
 
+  auto fill_block = [&](const int &row_shift, const int &col_shift,
+                        const Eigen::Matrix6d block) mutable {
+    for (int r = 0; r < 6; ++r) {
+      for (int c = 0; c < 6; ++c) {
+        H.coeffRef(row_shift * 6 + r, col_shift * 6 + c) += block(r, c);
+      }
+    }
+  };
   // Fill the linear system
   H_triplets.reserve((measurements.size() * 36 * 4) + 1);
-  std::for_each(
-      measurements.cbegin(), measurements.cend(), [&](const Measurement &meas) {
-        // Compute the error and jacobian
-        const auto [e, J] = computeErrorAndJacobian(state, meas);
-        const Eigen::VectorXd J_transpose_J =
-            (J.transpose() * J).reshaped(); // Vectorized for easier loop
-        const Eigen::VectorXd J_transpose_e = J.transpose() * e;
+  std::for_each(measurements.cbegin(), measurements.cend(),
+                [&](const Measurement &meas) {
+                  // Compute the error and jacobian
+                  const auto [e, J] = computeErrorAndJacobian(state, meas);
+                  const Eigen::Matrix6d J_transpose_J = (J.transpose() * J);
+                  const Eigen::Vector6d J_transpose_e = J.transpose() * e;
 
-        // Fill Hessian
-        std::ranges::for_each(
-            std::views::enumerate(J_transpose_J), [&](const auto &idx_val) {
-              const auto &[idx, val] = idx_val;
-              const int J_row = idx % 6; // from vec to matrix position
-              const int J_col = idx / 6;
-              H_triplets.emplace_back((meas.from * 6) + J_row,
-                                      (meas.from * 6) + J_col, val);
-              H_triplets.emplace_back((meas.from * 6) + J_row,
-                                      (meas.to * 6) + J_col, -val);
-              H_triplets.emplace_back((meas.to * 6) + J_row,
-                                      (meas.from * 6) + J_col, -val);
-              H_triplets.emplace_back((meas.to * 6) + J_row,
-                                      (meas.to * 6) + J_col, val);
-            });
+                  H.block<6, 6>(meas.from * 6, meas.from * 6) += J_transpose_J;
+                  H.block<6, 6>(meas.from * 6, meas.to * 6) += -J_transpose_J;
+                  H.block<6, 6>(meas.to * 6, meas.from * 6) += -J_transpose_J;
+                  H.block<6, 6>(meas.to * 6, meas.to * 6) += J_transpose_J;
 
-        // Fill b
-        b.block<6, 1>(meas.from * 6, 0) += J_transpose_e;
-        b.block<6, 1>(meas.to * 6, 0) += -J_transpose_e;
+                  // Fill b
+                  b.segment<6>(meas.from * 6) += J_transpose_e;
+                  b.segment<6>(meas.to * 6) -= J_transpose_e;
 
-        // Compute error
-        chi_square += e.squaredNorm();
-      });
+                  // Compute error
+                  chi_square += e.squaredNorm();
+                });
 
   // Fix the first state by assigning a very high certainty and b(0) = 0
-  for (int i = 0; i < 6; i++) {
-    H_triplets.emplace_back(i, i, 1e200);
-    b(i) = 0.0;
-  }
+  /* for (int i = 0; i < 6; i++) { */
+  /*   H_triplets.emplace_back(i, i, 1e200); */
+  /* } */
 
-  // Build the sparse system
-  H.setFromTriplets(H_triplets.begin(), H_triplets.end());
+  fill_block(0, 0, 1e200 * Eigen::Matrix6d::Identity());
+  /* // Build the sparse system */
+  /* H.setFromTriplets(H_triplets.begin(), H_triplets.end()); */
+  std::cout << H << std::endl;
 
-  return {H, b, chi_square};
+  return {H, -b, chi_square};
 }
 
 } // namespace
@@ -219,49 +226,51 @@ State Solver::solveWithDogLeg(const State &state,
 double Solver::_computeDogLegStep(const State &state,
                                   const std::vector<Measurement> &measurements,
                                   const int iter) {
-  // Compute Hessian and gradient
-  const auto [H, b, current_chi] = buildLinearSystem(state, measurements);
-  const double b_squared_norm = b.squaredNorm();
-  const double b_norm = b.norm();
+  /* // Compute Hessian and gradient */
+  /* const auto [H, b, current_chi] = buildLinearSystem(state, measurements); */
+  /* const double b_squared_norm = b.squaredNorm(); */
+  /* const double b_norm = b.norm(); */
 
-  // Compute Gauss-Newton Direction
-  _computeGaussNewtonSolution(H, b, iter == 0);
-  const double h_gn_norm = this->_h_gn.norm();
+  /* // Compute Gauss-Newton Direction */
+  /* _computeGaussNewtonSolution(H, b, iter == 0); */
+  /* const double h_gn_norm = this->_h_gn.norm(); */
 
-  // Compute the Cauchy point
-  _computeCauchyPoint(H, b, b_squared_norm);
-  const double alpha_h_sd_norm = this->_alpha_h_sd.norm();
+  /* // Compute the Cauchy point */
+  /* _computeCauchyPoint(H, b, b_squared_norm); */
+  /* const double alpha_h_sd_norm = this->_alpha_h_sd.norm(); */
 
-  if (h_gn_norm <= this->_trust_region_radius) {
-    // Case 1: Gauss-Newton
-    this->_h_dl = this->_h_gn;
-    this->_linear_decrease = 0.5 * current_chi;
-  } else if (alpha_h_sd_norm >= this->_trust_region_radius) {
-    // Case 2: Chauchy Point
-    this->_h_dl = this->_trust_region_radius * -b / b_norm;
-    this->_linear_decrease =
-        this->_trust_region_radius *
-        (2 * alpha_h_sd_norm - this->_trust_region_radius) / (2 * this->_alpha);
-  } else {
-    // Case 3: "Hybrid"
-    const double beta = _computeBeta(alpha_h_sd_norm);
-    this->_h_dl = _alpha_h_sd + beta * (_h_gn - _alpha_h_sd);
-    this->_linear_decrease =
-        0.5 * this->_alpha * (1 - beta) * (1 - beta) * b_squared_norm +
-        beta * (2 - beta) * (0.5 * current_chi);
-  }
+  /* if (h_gn_norm <= this->_trust_region_radius) { */
+  /*   // Case 1: Gauss-Newton */
+  /*   this->_h_dl = this->_h_gn; */
+  /*   this->_linear_decrease = 0.5 * current_chi; */
+  /* } else if (alpha_h_sd_norm >= this->_trust_region_radius) { */
+  /*   // Case 2: Chauchy Point */
+  /*   this->_h_dl = this->_trust_region_radius * -b / b_norm; */
+  /*   this->_linear_decrease = */
+  /*       this->_trust_region_radius * */
+  /*       (2 * alpha_h_sd_norm - this->_trust_region_radius) / (2 *
+   * this->_alpha); */
+  /* } else { */
+  /*   // Case 3: "Hybrid" */
+  /*   const double beta = _computeBeta(alpha_h_sd_norm); */
+  /*   this->_h_dl = _alpha_h_sd + beta * (_h_gn - _alpha_h_sd); */
+  /*   this->_linear_decrease = */
+  /*       0.5 * this->_alpha * (1 - beta) * (1 - beta) * b_squared_norm + */
+  /*       beta * (2 - beta) * (0.5 * current_chi); */
+  /* } */
 
-  this->_h_dl_norm = this->_h_dl.norm();
+  /* this->_h_dl_norm = this->_h_dl.norm(); */
 
-  return current_chi;
+  /* return current_chi; */
 }
 
-void Solver::_computeGaussNewtonSolution(const Eigen::SparseMatrix<double> &H,
+void Solver::_computeGaussNewtonSolution(const Eigen::MatrixXd &H,
                                          const Eigen::VectorXd &b,
                                          const bool compute_sparse_solver) {
-  if (compute_sparse_solver)
-    _sparse_solver.compute(H);
-  this->_h_gn = _sparse_solver.solve(-b);
+  /* if (compute_sparse_solver) */
+  /*   _sparse_solver.compute(H); */
+  /* this->_h_gn = _sparse_solver.solve(-b); */
+  this->_h_gn = H.ldlt().solve(-b);
 }
 
 void Solver::_computeCauchyPoint(const Eigen::SparseMatrix<double> &H,

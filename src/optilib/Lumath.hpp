@@ -10,7 +10,7 @@ inline Eigen::VectorXd flatten(const Eigen::Matrix4d &T) {
   return T.block<3, 4>(0, 0).reshaped();
 }
 
-Eigen::Matrix4d v2T(const Eigen::VectorXd &v);
+Eigen::Matrix4d v2T(const Eigen::Matrix<double, 6, 1> &v);
 
 Eigen::Matrix3d skew(const Eigen::Vector3d &v);
 

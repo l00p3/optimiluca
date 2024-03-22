@@ -28,7 +28,7 @@ private:
   double _computeDogLegStep(const State &state,
                             const std::vector<Measurement> &measurements,
                             const int iter);
-  void _computeGaussNewtonSolution(const Eigen::SparseMatrix<double> &H,
+  void _computeGaussNewtonSolution(const Eigen::MatrixXd &H,
                                    const Eigen::VectorXd &b,
                                    const bool compute_sparse_solver);
   void _computeCauchyPoint(const Eigen::SparseMatrix<double> &H,
