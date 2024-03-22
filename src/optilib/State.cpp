@@ -61,8 +61,6 @@ State::generateStateAndMeasurements(const int state_size,
   // Initialize random number generator from 0 to 360 degrees
   /* std::random_device rd; */
   std::mt19937 mt(45); // TODO: fixed seed
-  std::uniform_real_distribution<double> angles_generator(0.0, 2 * pi);
-  std::normal_distribution<double> unit_vector_generator(0.0, 1.0);
   std::uniform_real_distribution<double> vector_generator(-10.0, 10.0);
   std::uniform_int_distribution<int> ids_generator(0, state_size - 1);
 
@@ -74,12 +72,10 @@ State::generateStateAndMeasurements(const int state_size,
 
   // Rotation generator
   auto rotation_generator = [&]() {
-    Eigen::Vector3d rotation_axis({unit_vector_generator(mt),
-                                   unit_vector_generator(mt),
-                                   unit_vector_generator(mt)});
-    rotation_axis.normalize();
-    return Eigen::Matrix3d(
-        Eigen::AngleAxisd(angles_generator(mt), rotation_axis));
+    const Eigen::Vector3d omega_vector =
+        2 * pi * Eigen::Vector3d::Random().array() - pi;
+    const double angle = omega_vector.norm();
+    return Eigen::Matrix3d(Eigen::AngleAxisd(angle, omega_vector.normalized()));
   };
 
   // Vector generator
