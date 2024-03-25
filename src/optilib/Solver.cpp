@@ -41,7 +41,7 @@ computeErrorAndJacobian(const State &state, const Measurement &meas) {
       flatten(T_inverse(state(meas.from)) * state(meas.to) - meas.z);
 
   // Compute the Jacobian
-  Eigen::Matrix12_6d J = Eigen::Matrix12_6d::Zero(12, 6);
+  Eigen::Matrix12_6d J = Eigen::Matrix12_6d::Zero();
   J.block<9, 1>(0, 3) = (R_from_transpose * Rx_der_0() * R_to).reshaped();
   J.block<9, 1>(0, 4) = (R_from_transpose * Ry_der_0() * R_to).reshaped();
   J.block<9, 1>(0, 5) = (R_from_transpose * Rz_der_0() * R_to).reshaped();
@@ -63,11 +63,11 @@ LinearSystem buildLinearSystem(const State &state,
   double chi_square = 0.0;
 
   // Fill the linear system
-  H_triplets.reserve((measurements.size() * 36 * 4) + 1);
+  H_triplets.reserve((measurements.size() * 36 * 4) + 6);
   std::for_each(
       measurements.cbegin(), measurements.cend(), [&](const Measurement &meas) {
         // Compute the error and jacobian
-        const auto [e, J] = computeErrorAndJacobian(state, meas);
+        const auto &[e, J] = computeErrorAndJacobian(state, meas);
         J_transpose_J =
             (J.transpose() * J).reshaped(); // Vectorized for easier loop
         J_transpose_e = J.transpose() * e;
@@ -95,6 +95,7 @@ LinearSystem buildLinearSystem(const State &state,
         // Compute error
         chi_square += e.squaredNorm();
       });
+  H_triplets.shrink_to_fit();
 
   // Fix the first state by assigning a very high certainty and b(0) = 0
   for (int i = 0; i < 6; i++) {
@@ -121,18 +122,18 @@ State Solver::solveWithGaussNewton(const State &state,
   State optimized_state = state;
   const double state_size = state.size();
   double current_chi = 0.0;
-  this->_startTimer(n_iters);
 
   if (verbose)
     this->_printStart();
 
   // For each iteration
+  this->_startTimer(n_iters);
   for (int iter = 0; iter < n_iters; ++iter) {
     // Execution time
     this->_updateTimerIterationStarted();
 
     // Compute Hessian and gradient
-    const auto [H, b, current_chi] =
+    const auto &[H, b, current_chi] =
         buildLinearSystem(optimized_state, measurements);
 
     // Compute Gauss-Newton Direction
@@ -173,7 +174,6 @@ State Solver::solveWithDogLeg(const State &state,
   State optimized_state = state;
   const double state_size = state.size();
   double current_chi = 0.0;
-  this->_startTimer(n_iters);
 
   // Initialize direction vectors sizes
   this->_h_gn = Eigen::VectorXd::Zero(state_size);
@@ -183,6 +183,7 @@ State Solver::solveWithDogLeg(const State &state,
     this->_printStart();
 
   // For each iteration
+  this->_startTimer(n_iters);
   for (int iter = 0; iter < n_iters; ++iter) {
     // Execution time
     this->_updateTimerIterationStarted();

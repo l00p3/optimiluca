@@ -5,7 +5,7 @@ build:
 	@cmake --build build -j$(nproc)
 
 run_GN: build
-	./bin/optimiluca -s 80 -c 0 -i 10000 -v 1 -d 0
+	./bin/optimiluca -s 500 -c 500 -i 1000 -v 1 -d 0
 
 run_DL: build
 	./bin/optimiluca -s 100 -c 100 -i 100 -v 1 -d 1
