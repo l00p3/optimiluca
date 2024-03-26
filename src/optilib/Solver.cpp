@@ -42,9 +42,12 @@ computeErrorAndJacobian(const State &state, const Measurement &meas) {
 
   // Compute the Jacobian
   Eigen::Matrix12_6d J = Eigen::Matrix12_6d::Zero();
-  J.block<9, 1>(0, 3) = (R_from_transpose * Rx_der_0() * R_to).reshaped();
-  J.block<9, 1>(0, 4) = (R_from_transpose * Ry_der_0() * R_to).reshaped();
-  J.block<9, 1>(0, 5) = (R_from_transpose * Rz_der_0() * R_to).reshaped();
+  J.block<9, 1>(0, 3) =
+      (R_from_transpose * skew(Eigen::Vector3d::UnitX()) * R_to).reshaped();
+  J.block<9, 1>(0, 4) =
+      (R_from_transpose * skew(Eigen::Vector3d::UnitY()) * R_to).reshaped();
+  J.block<9, 1>(0, 5) =
+      (R_from_transpose * skew(Eigen::Vector3d::UnitZ()) * R_to).reshaped();
   J.block<3, 3>(9, 0) = R_from_transpose;
   J.block<3, 3>(9, 3) = -R_from_transpose * skew(t_to);
 
