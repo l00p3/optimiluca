@@ -1,6 +1,5 @@
 #include "Lumath.hpp"
 #include <algorithm>
-#include <iostream>
 #include <numeric>
 #include <random>
 #include <ranges>
@@ -31,15 +30,12 @@ State State::boxPlus(const Eigen::VectorXd &dx) const {
 }
 
 double State::distance(const State &other) const {
-  // L1-norm of the angles distance
-  /* return std::transform_reduce( */
-  /*     this->_rotations.cbegin(), this->_rotations.cend(), */
-  /*     other._rotations.cbegin(), 0.0, std::plus<double>(), */
-  /*     [&](const Eigen::Rotation2Dd &R1, const Eigen::Rotation2Dd &R2) { */
-  /*       return std::abs(R1.smallestPositiveAngle() - */
-  /*                       R2.smallestPositiveAngle()); */
-  /*     }); */
-  return 123456; // TODO
+  return std::transform_reduce(
+      this->_T_matrices.cbegin(), this->_T_matrices.cend(),
+      other._T_matrices.cbegin(), 0.0, std::plus<double>(),
+      [&](const Eigen::Matrix4d &T1, const Eigen::Matrix4d &T2) {
+        return flatten(T1 - T2).squaredNorm();
+      });
 }
 
 // ---------- OPERATORS ----------
