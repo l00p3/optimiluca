@@ -44,14 +44,11 @@ double State::distance(const State &other) const {
 
 // ---------- OPERATORS ----------
 double State::norm() const {
-  /* return std::sqrt( */
-  /*     std::accumulate(_rotations.cbegin(), _rotations.cend(), 0.0, */
-  /*                     [&](const double &val, const Eigen::Rotation2Dd &R) {
-   */
-  /*                       return val + R.smallestAngle() * R.smallestAngle();
-   */
-  /*                     })); */
-  return 0.0; // TODO
+  return std::sqrt(
+      std::accumulate(_T_matrices.cbegin(), _T_matrices.cend(), 0.0,
+                      [&](const double &val, const Eigen::Matrix4d &T) {
+                        return val + T.norm();
+                      }));
 }
 
 // ---------- STATIC METHODS ----------

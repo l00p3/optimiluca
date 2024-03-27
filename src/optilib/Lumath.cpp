@@ -4,10 +4,10 @@ namespace optilib {
 
 Eigen::Matrix4d v2T(const Eigen::Vector6d &v) {
   Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
-  const double angle = v.template tail<3>().norm();
-  const Eigen::Vector3d axis = v.template tail<3>().normalized();
+  const double angle = v.tail<3>().norm();
+  const Eigen::Vector3d axis = v.tail<3>().normalized();
   T.block<3, 3>(0, 0) = Eigen::AngleAxisd(angle, axis).toRotationMatrix();
-  T.block<3, 1>(0, 3) = v.template head<3>();
+  T.block<3, 1>(0, 3) = v.head<3>();
   return T;
 }
 
